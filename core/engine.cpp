@@ -5,12 +5,12 @@
 #include <memory>
 #include <yaml-cpp/yaml.h>  // For quests
 #include "module_interface.h"
-#include <unordered_map>
 #include <functional>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
-Engine::Engine(const std::string& modulesDir) : modules_dir(modulesDir), router() {}
+Engine::Engine(const std::string& modulesDir) : modules_dir(modulesDir), router(), active_quests() {}
 
 std::vector<std::string> Engine::discover_module_paths() const {
     std::vector<std::string> out;
@@ -46,13 +46,13 @@ void Engine::add_module(std::shared_ptr<SmiteModule> module) {
             if (quests_yaml["quests"]) {
                 fmt::print("Quest progress for {}:\n", module->name());
                 int id = 0;
-                for (auto q : quests_yaml["quests"]) {
+                for (const auto& q : quests_yaml["quests"]) {
                     if (active_quests[module->name()].count(id) > 0) {  // Only active
                         bool passed = module->evaluate_condition(q["condition"]);
                         fmt::print("  {}: {} ({})\n", q["title"].as<std::string>(), 
                                    passed ? "Complete" : "Pending", q["description"].as<std::string>());
                     }
-                    id++;
+                    ++id;
                 }
             }
         } catch (const std::exception& ex) {
@@ -75,25 +75,37 @@ static void cout_flush(const std::string& msg) {
     std::cout << msg << std::flush;
 }
 
-// Extracted quests handler
+// List quests for a module
+std::string Engine::list_quests_for_module(const std::string& mod_name) const {
+    std::ostringstream oss;
+    std::string mod_path = modules_dir + "/" + mod_name;
+    std::string quests_file = (fs::path(mod_path) / "quests.yaml").string();
+    if (!fs::exists(quests_file)) {
+        oss << "No quests.yaml for module '" << mod_name << "'.\n";
+        return oss.str();
+    }
+    YAML::Node quests_yaml = YAML::LoadFile(quests_file);
+    if (quests_yaml["quests"]) {
+        oss << mod_name << " quests:\n";
+        int id = 0;
+        for (const auto& q : quests_yaml["quests"]) {
+            bool active = active_quests.at(mod_name).count(id) > 0;
+            oss << "  " << id << ": " << q["title"].as<std::string>() << " [" << (active ? "ACTIVE" : "INACTIVE") << "]\n";
+            ++id;
+        }
+    } else {
+        oss << "No quests defined for " << mod_name << ".\n";
+    }
+    return oss.str();
+}
+
+// Extracted quests handler (Uses list_quests_for_module)
 void Engine::handle_quests(const std::vector<std::string>& tokens) {
     if (tokens.size() < 2) {
         cout_flush("Available quests by module:\n");
         for (const auto& mod : router.get_modules()) {
-            std::string mod_path = modules_dir + "/" + mod->name();
-            std::string quests_file = (fs::path(mod_path) / "quests.yaml").string();
-            if (fs::exists(quests_file)) {
-                YAML::Node quests_yaml = YAML::LoadFile(quests_file);
-                if (quests_yaml["quests"]) {
-                    cout_flush(mod->name() + ":\n");
-                    int id = 0;
-                    for (auto q : quests_yaml["quests"]) {
-                        bool active = active_quests[mod->name()].count(id) > 0;
-                        cout_flush("  " + std::to_string(id) + ": " + q["title"].as<std::string>() + " [" + (active ? "ACTIVE" : "INACTIVE") + "]\n");
-                        id++;
-                    }
-                }
-            }
+            cout_flush(mod->name() + ":\n");
+            cout_flush(list_quests_for_module(mod->name()));
         }
         cout_flush("\nUsage: quests <module> [id] to list/activate (e.g., quests kubernetes, quests linux 0)\n");
         return;
@@ -101,24 +113,7 @@ void Engine::handle_quests(const std::vector<std::string>& tokens) {
     auto mod_name = tokens[1];
     if (tokens.size() < 3) {
         // List for module
-        std::string mod_path = modules_dir + "/" + mod_name;
-        std::string quests_file = (fs::path(mod_path) / "quests.yaml").string();
-        if (!fs::exists(quests_file)) {
-            cout_flush("No quests.yaml for module '" + mod_name + "'.\n");
-            return;
-        }
-        YAML::Node quests_yaml = YAML::LoadFile(quests_file);
-        if (quests_yaml["quests"]) {
-            cout_flush(mod_name + " quests:\n");
-            int id = 0;
-            for (auto q : quests_yaml["quests"]) {
-                bool active = active_quests[mod_name].count(id) > 0;
-                cout_flush("  " + std::to_string(id) + ": " + q["title"].as<std::string>() + " [" + (active ? "ACTIVE" : "INACTIVE") + "]\n");
-                id++;
-            }
-        } else {
-            cout_flush("No quests defined for " + mod_name + ".\n");
-        }
+        cout_flush(list_quests_for_module(mod_name));
         return;
     }
     // Activate
@@ -146,50 +141,103 @@ void Engine::repl() {
             std::cin.clear();
             continue;
         }
-        std::string cmd = trim(line);  // Trim early
+        std::string cmd = trim(line);
         if (cmd.empty()) continue;
-        auto tokens = CommandRouter::tokenize(cmd);  // Tokenize
-        if (tokens.empty()) continue;
 
-        // Engine command map
-        static const std::unordered_map<std::string, std::function<void(const std::vector<std::string>&)>> engine_cmds = {
-            {"quit", [](const auto&) { throw std::runtime_error("quit"); }},  // Break loop
-            {"exit", [](const auto&) { throw std::runtime_error("exit"); }},
-            {"help", [this](const auto&) {
-                auto cmds = router.list_commands();
-                cout_flush("Registered command prefixes:\n");
-                for (const auto& c : cmds) cout_flush("  " + c + "\n");
-                cout_flush("Other engine commands: modules, quests, quit\n");
-            }},
-            {"modules", [this](const auto&) {
-                cout_flush("Modules loaded:\n");
-                for (const auto& mod : router.get_modules()) {
-                    cout_flush("  - " + mod->name() + " (commands: " + std::to_string(mod->registered_prefixes().size()) + ")\n");
+        // Check for "&&" chaining FIRST
+        size_t and_pos = cmd.find(" && ");
+        if (and_pos != std::string::npos) {
+            std::string cmd1 = trim(cmd.substr(0, and_pos));
+            std::string cmd2 = trim(cmd.substr(and_pos + 4));
+            if (!cmd1.empty() && !cmd2.empty()) {
+                // Run cmd1
+                std::string out1 = dispatch_command(cmd1);
+                if (!out1.empty()) cout_flush(out1);
+                // Check for error
+                if (out1.find("Error") != std::string::npos || out1.find("Unknown") != std::string::npos || out1.find("NotFound") != std::string::npos || out1.find("Invalid") != std::string::npos) {
+                    cout_flush(" (Chain stopped on error)\n");
+                } else {
+                    // Run cmd2 if cmd1 succeeded
+                    std::string out2 = dispatch_command(cmd2);
+                    if (!out2.empty()) cout_flush(out2);
                 }
-                cout_flush("(Call 'help' to see all commands)\n");
-            }},
-            {"quests", [this](const auto& t) { handle_quests(t); }}
-        };
-
-        auto engine_it = engine_cmds.find(tokens[0]);
-        if (engine_it != engine_cmds.end()) {
-            try {
-                engine_it->second(tokens);  // Dispatch
-                if (tokens[0] == "quit" || tokens[0] == "exit") break;  // Handle throw
-            } catch (const std::runtime_error&) {
-                break;  // Quit/exit
+                continue;
             }
-            continue;
         }
 
-        // Route to modules
-        std::string out = router.handle_input(cmd);
-        if (out.empty()) {
-            cout_flush("Unknown command.\n");
-        } else {
-            cout_flush(out);
+        // Normal dispatch
+        std::string out = dispatch_command(cmd);
+        if (!out.empty()) cout_flush(out);
+    }
+    cout_flush("\nJourney ends. Farewell, Apprentice.\n");
+}
+
+// Dispatch helper (map style for engine cmds or router)
+std::string Engine::dispatch_command(const std::string& cmd) {
+    auto tokens = CommandRouter::tokenize(cmd);
+    if (tokens.empty()) return "";
+
+    // Engine command map (return string for chaining)
+    const std::unordered_map<std::string, std::function<std::string(const std::vector<std::string>&)>> engine_cmds = {
+        {"quit", [](const auto&) -> std::string { throw std::runtime_error("quit"); }},
+        {"exit", [](const auto&) -> std::string { throw std::runtime_error("exit"); }},
+        {"help", [this](const auto&) -> std::string {
+            auto cmds = router.list_commands();
+            std::ostringstream oss;
+            oss << "Registered command prefixes:\n";
+            for (const auto& c : cmds) oss << "  " << c << "\n";
+            oss << "Other engine commands: modules, quests, quit\n";
+            return oss.str();
+        }},
+        {"modules", [this](const auto&) -> std::string {
+            std::ostringstream oss;
+            oss << "Modules loaded:\n";
+            for (const auto& mod : router.get_modules()) {
+                oss << "  - " << mod->name() << " (commands: " << mod->registered_prefixes().size() << ")\n";
+            }
+            oss << "(Call 'help' to see all commands)\n";
+            return oss.str();
+        }},
+        {"quests", [this](const auto& t) -> std::string {
+            std::ostringstream oss;
+            if (t.size() < 2) {
+                oss << "Available quests by module:\n";
+                for (const auto& mod : router.get_modules()) {
+                    oss << mod->name() << ":\n";
+                    oss << list_quests_for_module(mod->name());
+                }
+                oss << "\nUsage: quests <module> [id] to list/activate (e.g., quests kubernetes, quests linux 0)\n";
+            } else {
+                auto mod_name = t[1];
+                if (t.size() < 3) {
+                    oss << list_quests_for_module(mod_name);
+                } else {
+                    // Activate
+                    int quest_id;
+                    try {
+                        quest_id = stoi(t[2]);
+                    } catch (...) {
+                        oss << "Invalid quest ID; must be integer.\n";
+                        return oss.str();
+                    }
+                    active_quests[mod_name].insert(quest_id);
+                    oss << "Activated quest " << quest_id << " for " << mod_name << ". Re-run app to check progress.\n";
+                }
+            }
+            return oss.str();
+        }}
+    };
+
+    auto engine_it = engine_cmds.find(tokens[0]);
+    if (engine_it != engine_cmds.end()) {
+        try {
+            return engine_it->second(tokens);
+        } catch (const std::runtime_error&) {
+            throw;  // Re-throw for repl
         }
     }
 
-    cout_flush("\nJourney ends. Farewell, Apprentice.\n");
+    // Route to modules
+    std::string out = router.handle_input(cmd);
+    return out.empty() ? "Unknown command.\n" : out;
 }
