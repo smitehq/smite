@@ -1,0 +1,9 @@
+quests:
+  - id: k8s_crashloop
+    title: "The Crashing Pod"
+    description: "Resolve the CrashLoopBackOff for the backend pod."
+    condition:
+      type: pod_status
+      pod: backend
+      status: Running
+    reward_xp: 100

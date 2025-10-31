@@ -1,0 +1,12 @@
+cluster:
+  pods:
+    - name: backend
+      status: CrashLoopBackOff
+      restarts: 5
+      logs:
+        - "2025-10-24T14:00:01 Error: cannot connect to database"
+    - name: frontend
+      status: Running
+      restarts: 0
+      logs:
+        - "Started nginx"

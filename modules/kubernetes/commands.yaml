@@ -1,0 +1,6 @@
+commands:
+  - "kubectl get pods"
+  - "kubectl logs"
+  - "kubectl describe pod"
+  - "kubectl edit deployment api-service"
+  - "kubectl set image deployment/api-service api-service=api-service:v2"
