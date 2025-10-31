@@ -20,6 +20,7 @@ public:
     bool load_modules();  // Future: Auto-call factories by convention
     void add_module(std::shared_ptr<SmiteModule> module);  // Plug-and-play add
     void repl();
+    void handle_quests(const std::vector<std::string>& tokens);
 
 private:
     std::string modules_dir;
