@@ -7,7 +7,8 @@
 // For prototype simplicity we will statically instantiate the Kubernetes module factory.
 // In practice you might dynamically dlopen plugins or map module folder names to factories.
 
-extern std::shared_ptr<SmiteModule> create_module_kubernetes(); // from module.cpp
+std::shared_ptr<SmiteModule> create_module_linux();
+std::shared_ptr<SmiteModule> create_module_kubernetes();
 
 int main(int argc, char** argv) {
     std::setlocale(LC_ALL, "C");  // Sets global C locale safely (no throw)
@@ -16,6 +17,14 @@ int main(int argc, char** argv) {
 
     // create router & engine and register modules
     Engine engine("./modules"); // modules folder path (ignored for static proto)
+
+    auto linux = create_module_linux();  // Always first
+    if (!linux->load_from_path("./modules/linux")) {
+        std::cerr << "Failed to load linux module\n";
+        return 1;
+    }
+    engine.add_module(linux);
+
     // instantiate kube module and load its path
     auto kube = create_module_kubernetes();
     if (!kube->load_from_path("./modules/kubernetes")) {

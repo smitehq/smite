@@ -1,0 +1,27 @@
+scenario: default
+scenarios:
+  default:
+    current_dir: home/apprentice
+    filesystem:
+      root:
+        etc:
+          config:
+            content: "# Service config\nport: 8080"
+            perms: "r--r--r--"
+      home:
+        apprentice:
+          notes:
+            content: "Hint: cd /etc && chmod rw-r--r-- config to fix"
+            perms: "rw-r--r--"
+  outage:
+    current_dir: etc
+    filesystem:
+      root:
+        var:
+          log:
+            content: "Service outage: Perm denied on /etc/config"
+            perms: "rw-r--r--"
+      etc:
+        config:
+          content: "# Outage config\nenabled: false"
+          perms: "r--r--r--"
