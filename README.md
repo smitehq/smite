@@ -1,6 +1,6 @@
 # Smite.sh
 
-![Smite Logo](https://via.placeholder.com/800x200/FFD700/000000?text=Smite.sh) <!-- Replace with actual logo -->
+![Smite Logo](https://avatars.githubusercontent.com/u/240213050?s=88&v=4)
 
 **Smite.sh** is a CLI-based troubleshooting simulator for DevOps apprentices. Dive into interactive scenarios mimicking real-world Kubernetes (K8s), AWS EKS, and Linux environments. Learn by breaking and fixing—quests guide you through outages, scaling issues, and config mishaps, all in a safe, emulated REPL.
 
