@@ -1,7 +1,7 @@
 scenario: default
 scenarios:
   default:
-    current_dir: /
+    current_dir: /home/apprentice
     filesystem:
       etc:
         config:
