@@ -20,7 +20,7 @@ Built with C++17, yaml-cpp for state, fmt for styled output, and a modular route
    - Clang++ (15+ recommended; `pacman -S mingw-w64-x86_64-clang` in MSYS2).
 
 2. **Clone & Build**:
-    - ```bash
+    ```bash
     git clone [https://github.com/smitehq/smite](https://github.com/smitehq/smite)
     cd smite
     make  # Or make clean && make
