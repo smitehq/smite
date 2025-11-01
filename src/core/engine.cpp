@@ -239,5 +239,6 @@ std::string Engine::dispatch_command(const std::string& cmd) {
 
     // Route to modules
     std::string out = router.handle_input(cmd);
-    return out.empty() ? "Unknown command.\n" : out;
+    //return out.empty() ? "Unknown command.\n" : out;
+    return out;
 }
