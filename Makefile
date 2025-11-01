@@ -8,6 +8,10 @@ LDFLAGS := -L$(MYSYS2_PATH)/lib -lyaml-cpp -lfmt -mconsole -lstdc++fs -static
 MSYS2_TOOLS := C:/msys64/usr/bin
 MKDIR := $(MSYS2_TOOLS)/mkdir
 RM := $(MSYS2_TOOLS)/rm
+TAR := $(MSYS2_TOOLS)/tar
+
+# Version
+VERSION := 0.1.0
 
 # Source files
 SRC_SRCS := $(wildcard src/*.cpp) $(wildcard src/core/*.cpp) $(wildcard src/modules/**/*.cpp)
@@ -30,7 +34,7 @@ build/src/%.o: src/%.cpp
 
 # Clean
 clean:
-	$(RM) -rf build $(TARGET)
+	$(RM) -rf build dist $(TARGET)
 
 # Test (Catch2 header-only)
 test: $(TEST_OBJS) $(SRC_OBJS)
@@ -41,4 +45,29 @@ build/test/%.o: test/%.cpp
 	$(MKDIR) -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -I src -c $< -o $@
 
-.PHONY: clean test
+# Dist (create binary tarball: exe + README + optional YAMLs)
+dist: $(TARGET)
+	$(MKDIR) -p dist/modules
+	cp $(TARGET) README.md dist/
+	yaml_files := $(shell find src/modules -name '*.yaml' -type f 2>/dev/null)
+	if [ -n "$(yaml_files)" ]; then \
+		for file in $(yaml_files); do \
+			dir=$$(dirname $$file | sed 's|^src/modules/||'); \
+			$(MKDIR) -p "dist/modules/$$dir"; \
+			cp $$file "dist/modules/$$dir/"; \
+		done; \
+	else \
+		echo "No YAMLs found—skipping"; \
+	fi
+	$(TAR) -czf dist/smite-$(VERSION).tar.gz -C dist .
+	$(RM) -rf dist
+
+# Distcheck (test binary dist: extract, run exe, verify)
+distcheck: dist
+	$(TAR) -xzf dist/smite-$(VERSION).tar.gz
+	cd smite-$(VERSION) && ./$(TARGET) --version
+	cd smite-$(VERSION) && make test
+	$(RM) -rf smite-$(VERSION)
+	$(RM) dist/smite-$(VERSION).tar.gz
+
+.PHONY: clean test distcheck dist
