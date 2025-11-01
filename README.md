@@ -21,7 +21,7 @@ Built with C++17, yaml-cpp for state, fmt for styled output, and a modular route
 
 2. **Clone & Build**:
     ```bash
-    git clone [https://github.com/smitehq/smite](https://github.com/smitehq/smite)
+    git clone git@github.com:smitehq/smite.git
     cd smite
     make  # Or make clean && make
     ./smite.exe  # Or ./smite on Linux/macOS
