@@ -45,16 +45,21 @@ Example Session:
 ```bash
 $ ls
 notes (rw-r--r--)
+
 $ cat notes
 Hint: cd /etc && chmod rw-r--r-- config to fix
+
 $ cd /etc && ls
 config (r--r--r--)
+
 $ chmod rw-r--r-- config && kubectl get pods
 Permissions updated for config
 NAME		READY	    STATUS		RESTARTS
 backend	    0/1	        Running	    0
+
 $ quests kubernetes 0
 Activated quest 0 for kubernetes. Re-run app to check progress.
+
 $ quit
 Journey ends. Farewell, Apprentice.
 ```
