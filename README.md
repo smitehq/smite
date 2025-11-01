@@ -1,8 +1,8 @@
-# Smite.sh
+# smite.sh
 
 ![Smite Logo](https://avatars.githubusercontent.com/u/240213050?s=88&v=4)
 
-**Smite.sh** is a CLI-based troubleshooting simulator for DevOps apprentices. Dive into interactive scenarios mimicking real-world Kubernetes (K8s), AWS EKS, and Linux environments. Learn by breaking and fixing—quests guide you through outages, scaling issues, and config mishaps, all in a safe, emulated REPL.
+**smite.sh** is a CLI-based troubleshooting simulator for DevOps apprentices. Dive into interactive scenarios mimicking real-world Kubernetes (K8s), AWS EKS, and Linux environments. Learn by breaking and fixing—quests guide you through outages, scaling issues, and config mishaps, all in a safe, emulated REPL.
 
 Built with C++17, yaml-cpp for state, fmt for styled output, and a modular router for plug-and-play extensions. No GC, but RAII keeps it tight. Since October 2025, it's your journey to mastery.
 
