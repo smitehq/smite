@@ -1,13 +1,12 @@
 scenario: default
 scenarios:
   default:
-    current_dir: home/apprentice
+    current_dir: /
     filesystem:
-      root:
-        etc:
-          config:
-            content: "# Service config\nport: 8080"
-            perms: "r--r--r--"
+      etc:
+        config:
+          content: "# Service config\nport: 8080"
+          perms: "r--r--r--"
       home:
         apprentice:
           notes:
@@ -16,11 +15,10 @@ scenarios:
   outage:
     current_dir: etc
     filesystem:
-      root:
-        var:
-          log:
-            content: "Service outage: Perm denied on /etc/config"
-            perms: "rw-r--r--"
+      var:
+        log:
+          content: "Service outage: Perm denied on /etc/config"
+          perms: "rw-r--r--"
       etc:
         config:
           content: "# Outage config\nenabled: false"

@@ -1,3 +1,4 @@
+#include "module.h"
 #include "core/module_interface.h"
 #include <yaml-cpp/yaml.h>
 #include <memory>
@@ -31,30 +32,40 @@ public:
             Node scenario_fs = state_node["scenarios"][scenario];
             if (scenario_fs["filesystem"]) {
                 Node yaml_fs = scenario_fs["filesystem"];
-                function<void(const Node&, string)> parse_dir = [&](const Node& node, string current_path) {
+                function<void(const Node&, Dir&)> parse_dir = [&](const Node& node, Dir& current_dir) {
                     for (const auto& entry : node) {
                         string key = entry.first.as<string>();
+                        if (key.empty()) continue;
                         Node value = entry.second;
-                        string full_path = current_path.empty() ? "/" + key : current_path + "/" + key;
                         if (value.IsMap()) {
-                            // Dir: Init inner, recurse
-                            filesystem[full_path];  // Empty inner map
-                            parse_dir(value, full_path);
+                            // Check if leaf file map (has "content" key) or dir
+                            if (value["content"].IsDefined()) {
+                                // File: Create file
+                                string content = value["content"].as<string>("");
+                                string perms = value["perms"].as<string>("rw-r--r--");
+                                current_dir.files[key] = make_unique<File>();
+                                current_dir.files[key]->content = content;
+                                current_dir.files[key]->perms = perms;
+                            } else {
+                                // Dir: Create subdir, recurse
+                                current_dir.subdirs[key] = make_unique<Dir>();
+                                parse_dir(value, *current_dir.subdirs[key]);
+                            }
                         } else {
-                            // File: Scalar or map
-                            string content = value.IsScalar() ? value.as<string>() : value["content"].as<string>("");
-                            string perms = value.IsMap() ? value["perms"].as<string>("rw-r--r--") : "rw-r--r--";
-                            filesystem[current_path][key] = {content, perms};
+                            // Scalar file
+                            string content = value.as<string>("");
+                            string perms = "rw-r--r--";
+                            current_dir.files[key] = make_unique<File>();
+                            current_dir.files[key]->content = content;
+                            current_dir.files[key]->perms = perms;
                         }
                     }
                 };
-                parse_dir(yaml_fs, "");
-                cout << "Loaded Linux FS state: scenario '" << scenario << "' (dirs: " << filesystem.size() << ")\n";
+                root = make_unique<Dir>();
+                parse_dir(yaml_fs, *root);
+                cout << "Loaded Linux FS state: scenario '" << scenario << "' (root loaded)\n";
             }
-            if (scenario_fs["current_dir"]) {
-                string cd = scenario_fs["current_dir"].as<string>();
-                current_dir = cd.empty() ? "/" : "/" + cd;  // Prepend "/"
-            }
+            if (scenario_fs["current_dir"]) current_dir = scenario_fs["current_dir"].as<string>("/home/apprentice");
         } catch (const std::exception &ex) {
             cout << "LinuxModule load error: " << ex.what() << "\n";
             return false;
@@ -68,67 +79,52 @@ public:
         return find(registered.begin(), registered.end(), cmdPrefix) != registered.end();
     }
 
-    std::string run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) override {
-        // Helper: Find file in current dir (always returns inner iterator)
-        auto find_file = [this](const string& fname) {
-            return filesystem[current_dir].find(fname);  // [] inserts empty inner if missing
-        };
-
+   std::string run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) override {
         // Command handlers: prefix -> lambda (args, captures this/out)
         static const unordered_map<string, function<string(const vector<string>&)>> handlers = {
             {"ls", [this](const auto& args) -> string {
+                string target = args.empty() ? current_dir : args[0];
+                Dir* dir = get_dir(target);
+                if (!dir) return "ls: No such directory: " + target + "\n";
                 stringstream out;
-                if (args.empty()) {
-                    // Default to current_dir
-                    auto dir_it = filesystem.find(current_dir);
-                    if (dir_it == filesystem.end()) return "ls: No such directory: " + current_dir + "\n";
-                    for (const auto& f : dir_it->second) out << f.first << " (" << f.second.second << ") ";
-                } else {
-                    // List each arg dir
-                    for (const string& arg : args) {
-                        auto dir_it = filesystem.find(arg);
-                        if (dir_it == filesystem.end()) {
-                            out << "ls: No such directory: " << arg << "\n";
-                        } else {
-                            out << arg + ":\n";
-                            for (const auto& f : dir_it->second) out << "  " << f.first << " (" << f.second.second << ")\n";
-                        }
-                    }
-                }
+                for (const auto& f : dir->files) out << f.first << " (" << f.second->perms << ") ";
+                for (const auto& d : dir->subdirs) out << d.first << "/ ";
                 return out.str();
             }},
             {"cd", [this](const auto& args) -> string {
                 if (args.empty()) return "cd: No directory provided\n";
                 string target = args[0];
-                if (target == "/") current_dir = "/";
-                else if (target == "..") {
-                    size_t pos = current_dir.find_last_of('/');
-                    if (pos != string::npos && pos > 0) current_dir = current_dir.substr(0, pos);
-                } else current_dir += (current_dir == "/" ? "" : "/") + target;
-                return "";  // Silent
+                Dir* dir = get_dir(target);
+                if (!dir) return "cd: No such directory: " + target + "\n";
+                current_dir = target;  // Absolute (from get_dir)
+                return "";
             }},
             {"pwd", [this](const auto& /*args*/) -> string {
                 return current_dir + "\n";
             }},
-            {"cat", [this, find_file](const auto& args) -> string {
+            {"cat", [this](const auto& args) -> string {
                 if (args.empty()) return "cat: No file provided\n";
-                string fname = args[0];
-                auto file_it = find_file(fname);
-                if (file_it == filesystem[current_dir].end()) return "cat: " + fname + ": No such file\n";
-                return file_it->second.first + "\n";
+                string file_path = current_dir + "/" + args[0];
+                Dir* dir = get_dir(current_dir);
+                if (!dir || dir->files.count(args[0]) == 0) return "cat: " + args[0] + ": No such file\n";
+                return dir->files[args[0]]->content + "\n";
             }},
-            {"chmod", [this, find_file](const auto& args) -> string {
+            {"chmod", [this](const auto& args) -> string {
                 if (args.size() < 2) return "chmod: Usage chmod <perms> <file>\n";
                 string perms = args[0], fname = args[1];
-                auto file_it = find_file(fname);
-                if (file_it == filesystem[current_dir].end()) return "chmod: " + fname + ": No such file\n";
-                file_it->second.second = perms;
+                Dir* dir = get_dir(current_dir);
+                if (!dir || dir->files.count(fname) == 0) return "chmod: " + fname + ": No such file\n";
+                dir->files[fname]->perms = perms;
                 return "Permissions updated for " + fname + "\n";
             }},
             {"touch", [this](const auto& args) -> string {
                 if (args.empty()) return "touch: No file provided\n";
                 string fname = args[0];
-                filesystem[current_dir][fname] = {"", "rw-r--r--"};
+                Dir* dir = get_dir(current_dir);
+                if (!dir) dir = root.get();  // Fallback to root
+                dir->files[fname] = make_unique<File>();
+                dir->files[fname]->content = "";
+                dir->files[fname]->perms = "rw-r--r--";
                 return "";
             }}
         };
@@ -162,9 +158,41 @@ public:
 private:
     string path;
     FS filesystem;
+    unique_ptr<Dir> root = make_unique<Dir>();
     string current_dir = "/home/apprentice";
     vector<string> registered;
     YAML::Node quests;  // Stub for future
+
+
+    //  Helper: Get dir node (iterative traversal, handles relative/absolute, trailing /, . / ..)
+    Dir* get_dir(const string& path_arg) const {
+        string path = path_arg;
+        if (!path.empty() && path.back() == '/') path.pop_back();  // Strip trailing /
+
+        if (path.empty() || path == ".") {
+            // . or empty = current (absolute)
+            path = current_dir;
+        }
+        if (path == "/") return root.get();
+        bool absolute = (!path.empty() && path[0] == '/');
+        string full_path = absolute ? path : current_dir + "/" + path;  // Relative/absolute
+
+        // Iterative traversal
+        Dir* current = root.get();
+        stringstream ss(path);
+        string token;
+        while (getline(ss, token, '/')) {
+            if (token.empty()) continue;
+            if (token == ".") continue;  // Skip
+            if (token == "..") {
+                // Walk up (stub: return current)
+                return current;
+            }
+            if (current->subdirs.count(token) == 0 || !current->subdirs[token]) return nullptr;
+            current = current->subdirs[token].get();
+        }
+        return current;
+    }
 };
 
 // Factory
