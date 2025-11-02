@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 #include "module_interface.h"  // SmiteModule
 
 class CommandRouter {
@@ -16,6 +17,10 @@ public:
 
 private:
     std::vector<std::shared_ptr<SmiteModule>> modules;
+
+    // Precomputed: command prefix -> module
+    std::unordered_map<std::string, std::shared_ptr<SmiteModule>> prefix_map;
+    size_t max_prefix_tokens = 0;  // track longest prefix length
 };
 
 #endif

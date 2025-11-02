@@ -1,10 +1,19 @@
 #include "command_router.h"
 #include <sstream>
 #include <algorithm>
-#include <sstream>  // For istringstream
+#include <iostream>
 
 void CommandRouter::add_module(std::shared_ptr<SmiteModule> module) {
-    modules.push_back(std::move(module));
+    modules.push_back(module);
+
+    // Precompute prefix → module map
+    for (const auto& prefix : module->registered_prefixes()) {
+        prefix_map[prefix] = module;
+
+        // Track longest prefix in tokens
+        size_t tok_count = tokenize(prefix).size();
+        if (tok_count > max_prefix_tokens) max_prefix_tokens = tok_count;
+    }
 }
 
 std::vector<std::string> CommandRouter::tokenize(const std::string& s) {
@@ -15,25 +24,27 @@ std::vector<std::string> CommandRouter::tokenize(const std::string& s) {
     return t;
 }
 
-// Attempt longest-prefix match across modules
+// Optimized longest-prefix matching using precomputed map
 std::string CommandRouter::handle_input(const std::string& raw) {
     auto tokens = tokenize(raw);
     if (tokens.empty()) return "";
 
-    // Build progressive prefixes (longest-first)
-    for (int len = (int)tokens.size(); len > 0; --len) {
+    // Try longest possible prefixes first, down to 1 token
+    size_t try_len = std::min(tokens.size(), max_prefix_tokens);
+    while (try_len > 0) {
         std::string prefix = tokens[0];
-        for (int i=1;i<len;i++) prefix += " " + tokens[i];
+        for (size_t i = 1; i < try_len; ++i) prefix += " " + tokens[i];
 
-        for (auto &m : modules) {
-            if (m->supports_command(prefix)) {
-                // args are remaining tokens
-                std::vector<std::string> args(tokens.begin()+len, tokens.end());
-                return m->run_command(prefix, args);
-            }
+        auto it = prefix_map.find(prefix);
+        if (it != prefix_map.end()) {
+            std::vector<std::string> args(tokens.begin() + try_len, tokens.end());
+            return it->second->run_command(prefix, args);
         }
+
+        --try_len;
     }
-    return ""; // no module handled it
+
+    return ""; // No module handled it
 }
 
 std::vector<std::string> CommandRouter::list_commands() const {
