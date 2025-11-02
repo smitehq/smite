@@ -15,6 +15,8 @@ using namespace std;
 namespace fs = std::filesystem;
 using YAML::Node;
 
+// ---------------- LinuxModule ----------------
+
 string LinuxModule::name() const {
     return "linux";
 }
@@ -71,6 +73,8 @@ bool LinuxModule::load_from_path(const std::string& modulePath) {
     return true;
 }
 
+// ---------------- Command Registration ----------------
+
 void LinuxModule::register_command(const std::string& name, std::function<std::string(const std::vector<std::string>&)> handler) {
     command_registry[name] = std::move(handler);
 }
@@ -102,14 +106,16 @@ void LinuxModule::register_builtin_commands() {
                 out << "drwxr-xr-x 1 " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " 0 Nov  1 00:00 " << d.first << "\n";
             }
             for (const auto& f : dir->files) {
-                out << f.second->perms << " 1 "<< globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " "
+                out << f.second->perms << " 1 " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " "
                     << f.second->content.size() << " Nov  1 00:00 "
                     << f.first << "\n";
             }
         } else {
             for (const auto& f : dir->files) out << f.first << " ";
             for (const auto& d : dir->subdirs) out << d.first << "/ ";
+            out << "\n";
         }
+
         return out.str();
     });
 
@@ -130,6 +136,7 @@ void LinuxModule::register_builtin_commands() {
         Dir* dir = get_dir(resolved);
         if (!dir) return "cd: No such directory: " + target + "\n";
         current_dir = resolved;
+
         return "";
     });
 
@@ -165,21 +172,25 @@ void LinuxModule::register_builtin_commands() {
     });
 }
 
-std::string LinuxModule::run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) {
-    auto it = command_registry.find(cmdPrefix);
-    if (it == command_registry.end())
-        return "Command not found: " + cmdPrefix + "\n";
+// ---------------- Path Utilities ----------------
 
-    return it->second(args);
+std::string LinuxModule::expand_home(const std::string& path_arg) const {
+    if (path_arg.empty()) return path_arg;
+    if (path_arg[0] == '~') {
+        if (path_arg.size() == 1 || path_arg[1] == '/')
+            return home + path_arg.substr(1);
+    }
+    return path_arg;
 }
 
 std::string LinuxModule::resolve_path(const std::string& path_arg) const {
     if (path_arg.empty()) return current_dir;
-    if (path_arg[0] == '/') return path_arg; // already absolute
 
-    // Relative path
-    if (current_dir == "/") return "/" + path_arg;
-    return current_dir + "/" + path_arg;
+    std::string path = expand_home(path_arg);
+
+    if (path[0] == '/') return path; // absolute
+    if (current_dir == "/") return "/" + path;
+    return current_dir + "/" + path;
 }
 
 pair<Dir*, string> LinuxModule::get_dir_and_file(const std::string& full_path) const {
@@ -207,25 +218,27 @@ Dir* LinuxModule::get_dir(const string& path_arg) const {
 
     Dir* current = root.get();
     for (const auto& part : parts) {
-        if (part == "..") {
-            // Can't easily move up in pointer traversal — stop here
-            break;
-        }
         if (current->subdirs.count(part) == 0) return nullptr;
         current = current->subdirs.at(part).get();
     }
+
     return current;
 }
 
-bool LinuxModule::evaluate_condition(const YAML::Node&) {
-    // Future: implement conditions like file existence, perms, etc.
-    return false;
+// ---------------- Module Interface ----------------
+
+std::string LinuxModule::run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) {
+    auto it = command_registry.find(cmdPrefix);
+    if (it == command_registry.end())
+        return "Command not found: " + cmdPrefix + "\n";
+    return it->second(args);
 }
+
+bool LinuxModule::evaluate_condition(const YAML::Node&) { return false; }
 
 std::vector<std::string> LinuxModule::registered_prefixes() const {
     std::vector<std::string> out;
-    for (const auto& kv : command_registry)
-        out.push_back(kv.first);
+    for (const auto& kv : command_registry) out.push_back(kv.first);
     return out;
 }
 
@@ -233,13 +246,13 @@ bool LinuxModule::supports_command(const std::string& cmdPrefix) const {
     return command_registry.find(cmdPrefix) != command_registry.end();
 }
 
+// ---------------- Debug / FS ----------------
+
 std::size_t LinuxModule::fs_size() const {
     size_t count = 0;
     function<void(const Dir&)> count_entries = [&](const Dir& dir) {
         count += dir.files.size();
-        for (const auto& subdir_pair : dir.subdirs) {
-            count_entries(*subdir_pair.second);
-        }
+        for (const auto& subdir_pair : dir.subdirs) count_entries(*subdir_pair.second);
     };
     count_entries(*root);
     return count;
@@ -249,7 +262,8 @@ std::string LinuxModule::fs_debug() const {
     return "FS ready at " + current_dir + " (root dirs: " + to_string(root->subdirs.size()) + ")";
 }
 
-// Factory
+// ---------------- Factory ----------------
+
 std::shared_ptr<SmiteModule> create_module_linux() {
     return std::make_shared<LinuxModule>();
 }

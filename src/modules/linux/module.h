@@ -74,6 +74,7 @@ private:
     Dir* get_dir(const std::string& path) const;
     std::pair<Dir*, std::string> get_dir_and_file(const std::string& full_path) const;
     std::string resolve_path(const std::string& path_arg) const;
+    std::string expand_home(const std::string& path_arg) const;
 };
 
 #endif  // MODULES_LINUX_MODULE_H
