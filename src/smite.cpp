@@ -13,13 +13,23 @@ std::shared_ptr<SmiteModule> create_module_kubernetes();
 int main(int argc, char** argv) {
     std::setlocale(LC_ALL, "C");  // Sets global C locale safely (no throw)
 
+    // Early argument parsing
+    if (argc > 1) {
+        std::string arg1 = argv[1];
+        if (arg1 == "--version" || arg1 == "-v") {
+            std::cout << globals::GAME_NAME << " " << globals::GAME_VERSION << "\n";
+            return 0;
+        }
+        // Could add other flags: --help, --list-modules, etc.
+    }
+
     fmt::print(globals::style::header, "{} Welcome, Apprentice. Your journey begins.\n\n", globals::style::smite);
 
     // create router & engine and register modules
     Engine engine("./modules"); // modules folder path (ignored for static proto)
 
     auto linux = create_module_linux();  // Always first
-    if (!linux->load_from_path("./modules/linux")) {
+    if (!linux->load_from_path("./src/modules/linux")) {
         std::cerr << "Failed to load linux module\n";
         return 1;
     }
@@ -27,7 +37,7 @@ int main(int argc, char** argv) {
 
     // instantiate kube module and load its path
     auto kube = create_module_kubernetes();
-    if (!kube->load_from_path("./modules/kubernetes")) {
+    if (!kube->load_from_path("./src/modules/kubernetes")) {
         std::cerr << "Failed to load kubernetes module\n";
         return 1;
     }
