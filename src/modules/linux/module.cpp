@@ -1,3 +1,4 @@
+#include "globals.h"
 #include "module.h"
 #include "core/module_interface.h"
 #include <yaml-cpp/yaml.h>
@@ -54,7 +55,10 @@ bool LinuxModule::load_from_path(const std::string& modulePath) {
             parse_dir(yaml_fs, *root);
             cout << "Loaded Linux FS state: scenario '" << scenario << "' (root loaded)\n";
         }
-        current_dir = scenario_fs["current_dir"].as<string>("/home/apprentice");
+        if (scenario_fs["current_dir"]) {
+            current_dir = scenario_fs["current_dir"].as<std::string>(std::string("/home/") + globals::PLAYER_NAME);
+            home = current_dir;  // for ~ expansion
+        }
     } catch (const std::exception &ex) {
         cout << "LinuxModule load error: " << ex.what() << "\n";
         return false;
@@ -72,15 +76,40 @@ void LinuxModule::register_command(const std::string& name, std::function<std::s
 }
 
 void LinuxModule::register_builtin_commands() {
-    register_command("ls", [this](const auto& args) -> string {
-        string target = args.empty() ? current_dir : resolve_path(args[0]);
-        Dir* dir = get_dir(target);
+    register_command("ls", [this](const auto& args) -> std::string {
+        std::string target;
+        bool long_format = false;
+
+        // parse args
+        for (const auto& arg : args) {
+            if (arg == "-l") long_format = true;
+            else if (target.empty()) target = arg; // first non-flag arg is the path
+        }
+        if (target.empty()) target = current_dir; // default to current dir
+
+        Dir* dir = get_dir(resolve_path(target));
         if (!dir) return "ls: No such directory: " + target + "\n";
 
-        stringstream out;
-        for (const auto& d : dir->subdirs) out << d.first << "/ ";
-        for (const auto& f : dir->files) out << f.first << " ";
-        out << "\n";
+        std::stringstream out;
+
+        if (long_format) {
+            // simple total (approximate)
+            size_t total_blocks = 0;
+            for (const auto& f : dir->files) total_blocks += f.second->content.size() / 512 + 1;
+            out << "total " << total_blocks << "\n";
+
+            for (const auto& d : dir->subdirs) {
+                out << "drwxr-xr-x 1 " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " 0 Nov  1 00:00 " << d.first << "\n";
+            }
+            for (const auto& f : dir->files) {
+                out << f.second->perms << " 1 "<< globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " "
+                    << f.second->content.size() << " Nov  1 00:00 "
+                    << f.first << "\n";
+            }
+        } else {
+            for (const auto& f : dir->files) out << f.first << " ";
+            for (const auto& d : dir->subdirs) out << d.first << "/ ";
+        }
         return out.str();
     });
 

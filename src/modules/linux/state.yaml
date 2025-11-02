@@ -1,14 +1,14 @@
 scenario: default
 scenarios:
   default:
-    current_dir: /home/apprentice
+    current_dir: /home/zaphod
     filesystem:
       etc:
         config:
           content: "# Service config\nport: 8080"
           perms: "r--r--r--"
       home:
-        apprentice:
+        zaphod:
           notes:
             content: "Hint: cd /etc && chmod rw-r--r-- config to fix"
             perms: "rw-r--r--"

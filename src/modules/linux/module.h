@@ -1,6 +1,7 @@
 #ifndef MODULES_LINUX_MODULE_H
 #define MODULES_LINUX_MODULE_H
 
+#include "globals.h"
 #include <string>
 #include <map>
 #include <memory>
@@ -54,6 +55,7 @@ private:
     std::string path;
     std::unique_ptr<Dir> root = std::make_unique<Dir>();
     std::string current_dir = "/";
+    std::string home = std::string("/home/") + globals::PLAYER_NAME; // default, updated from state.yaml
     YAML::Node quests;  // future use (quests.yaml)
     std::map<std::string, std::map<std::string, std::pair<std::string, std::string>>> fs_tree; // legacy emulation map
 
