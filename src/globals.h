@@ -7,8 +7,9 @@
 
 namespace globals {
 
-	inline constexpr const char* GAME_NAME = "Smite.sh";
+	inline constexpr const char* GAME_NAME = "smite.sh";
 	inline constexpr const char* GAME_VERSION = "1.0.0";
+	inline constexpr const char* PLAYER_NAME = "zaphod";
 
 	struct style {
 		inline static constexpr auto error  = fmt::fg(fmt::color::red) | fmt::emphasis::bold;
