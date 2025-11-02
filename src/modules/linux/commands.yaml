@@ -1,7 +1,0 @@
-commands:
-  - ls
-  - cd
-  - pwd
-  - cat
-  - chmod
-  - touch

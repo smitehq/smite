@@ -7,15 +7,12 @@
 #include <filesystem>
 #include <map>
 #include <algorithm>
-#include <functional>  // For std::function in FileConfig
-
+#include <functional>
+#include <unordered_map>
 
 using namespace std;
 namespace fs = std::filesystem;
 using YAML::Node;
-
-// Emulated FS: dir -> {file: (content, perms)}
-using FS = map<string, map<string, pair<string, string>>>;
 
 string LinuxModule::name() const {
     return "linux";
@@ -35,163 +32,193 @@ bool LinuxModule::load_from_path(const std::string& modulePath) {
                     if (key.empty()) continue;
                     Node value = entry.second;
                     if (value.IsMap()) {
-                        // Check if leaf file map (has "content" key) or dir
                         if (value["content"].IsDefined()) {
-                            // File: Create file
+                            // File node
                             string content = value["content"].as<string>("");
                             string perms = value["perms"].as<string>("rw-r--r--");
-                            current_dir.files[key] = make_unique<File>();
-                            current_dir.files[key]->content = content;
-                            current_dir.files[key]->perms = perms;
+                            current_dir.files[key] = make_unique<File>(File{content, perms});
                         } else {
-                            // Dir: Create subdir, recurse
+                            // Directory node
                             current_dir.subdirs[key] = make_unique<Dir>();
                             parse_dir(value, *current_dir.subdirs[key]);
                         }
                     } else {
                         // Scalar file
                         string content = value.as<string>("");
-                        string perms = "rw-r--r--";
-                        current_dir.files[key] = make_unique<File>();
-                        current_dir.files[key]->content = content;
-                        current_dir.files[key]->perms = perms;
+                        current_dir.files[key] = make_unique<File>(File{content, "rw-r--r--"});
                     }
                 }
             };
+
             root = make_unique<Dir>();
             parse_dir(yaml_fs, *root);
             cout << "Loaded Linux FS state: scenario '" << scenario << "' (root loaded)\n";
         }
-        if (scenario_fs["current_dir"]) current_dir = scenario_fs["current_dir"].as<string>("/home/apprentice");
+        current_dir = scenario_fs["current_dir"].as<string>("/home/apprentice");
     } catch (const std::exception &ex) {
         cout << "LinuxModule load error: " << ex.what() << "\n";
         return false;
     }
-    registered = {"ls", "cd", "pwd", "cat", "chmod", "touch"};
-    cout << "Linux shell ready (commands: " << registered.size() << ")\n";
+
+    // Register built-in shell commands
+    register_builtin_commands();
+
+    cout << "Linux shell ready (commands: " << command_registry.size() << ")\n";
     return true;
 }
 
-bool LinuxModule::supports_command(const std::string& cmdPrefix) const {
-    return find(registered.begin(), registered.end(), cmdPrefix) != registered.end();
+void LinuxModule::register_command(const std::string& name, std::function<std::string(const std::vector<std::string>&)> handler) {
+    command_registry[name] = std::move(handler);
+}
+
+void LinuxModule::register_builtin_commands() {
+    register_command("ls", [this](const auto& args) -> string {
+        string target = args.empty() ? current_dir : resolve_path(args[0]);
+        Dir* dir = get_dir(target);
+        if (!dir) return "ls: No such directory: " + target + "\n";
+
+        stringstream out;
+        for (const auto& d : dir->subdirs) out << d.first << "/ ";
+        for (const auto& f : dir->files) out << f.first << " ";
+        out << "\n";
+        return out.str();
+    });
+
+    register_command("cd", [this](const auto& args) -> string {
+        if (args.empty()) return "cd: No directory provided\n";
+        string target = args[0];
+
+        if (target == "..") {
+            // Go up one directory
+            if (current_dir == "/") return ""; // already root
+            size_t pos = current_dir.find_last_of('/');
+            if (pos == 0) current_dir = "/";
+            else if (pos != string::npos) current_dir = current_dir.substr(0, pos);
+            return "";
+        }
+
+        string resolved = resolve_path(target);
+        Dir* dir = get_dir(resolved);
+        if (!dir) return "cd: No such directory: " + target + "\n";
+        current_dir = resolved;
+        return "";
+    });
+
+    register_command("pwd", [this](const auto&) -> string {
+        return current_dir + "\n";
+    });
+
+    register_command("cat", [this](const auto& args) -> string {
+        if (args.empty()) return "cat: No file provided\n";
+        string file_path = resolve_path(args[0]);
+
+        auto [dir, filename] = get_dir_and_file(file_path);
+        if (!dir || dir->files.count(filename) == 0)
+            return "cat: " + file_path + ": No such file\n";
+
+        return dir->files[filename]->content + "\n";
+    });
+
+    register_command("touch", [this](const auto& args) -> string {
+        if (args.empty()) return "touch: No file provided\n";
+        string file_path = resolve_path(args[0]);
+        auto [dir, filename] = get_dir_and_file(file_path);
+
+        if (!dir) return "touch: Invalid path\n";
+        dir->files[filename] = make_unique<File>(File{"", "rw-r--r--"});
+        return "";
+    });
+
+    register_command("echo", [this](const auto& args) {
+        string out;
+        for (const auto& a : args) out += a + " ";
+        return out + "\n";
+    });
 }
 
 std::string LinuxModule::run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) {
-    // Command handlers: prefix -> lambda (args, captures this/out)
-    static const unordered_map<string, function<string(const vector<string>&)>> handlers = {
-        {"ls", [this](const auto& args) -> string {
-            string target = args.empty() ? current_dir : args[0];
-            Dir* dir = get_dir(target);
-            if (!dir) return "ls: No such directory: " + target + "\n";
-            stringstream out;
-            for (const auto& f : dir->files) out << f.first << " (" << f.second->perms << ") ";
-            for (const auto& d : dir->subdirs) out << d.first << "/ ";
-            return out.str();
-        }},
-        {"cd", [this](const auto& args) -> string {
-            if (args.empty()) return "cd: No directory provided\n";
-            string target = args[0];
-            Dir* dir = get_dir(target);
-            if (!dir) return "cd: No such directory: " + target + "\n";
-            current_dir = target;  // Absolute (from get_dir)
-            return "";
-        }},
-        {"pwd", [this](const auto& /*args*/) -> string {
-            return current_dir + "\n";
-        }},
-        {"cat", [this](const auto& args) -> string {
-            if (args.empty()) return "cat: No file provided\n";
-            string file_path = current_dir + "/" + args[0];
-            Dir* dir = get_dir(current_dir);
-            if (!dir || dir->files.count(args[0]) == 0) return "cat: " + args[0] + ": No such file\n";
-            return dir->files[args[0]]->content + "\n";
-        }},
-        {"chmod", [this](const auto& args) -> string {
-            if (args.size() < 2) return "chmod: Usage chmod <perms> <file>\n";
-            string perms = args[0], fname = args[1];
-            Dir* dir = get_dir(current_dir);
-            if (!dir || dir->files.count(fname) == 0) return "chmod: " + fname + ": No such file\n";
-            dir->files[fname]->perms = perms;
-            return "Permissions updated for " + fname + "\n";
-        }},
-        {"touch", [this](const auto& args) -> string {
-            if (args.empty()) return "touch: No file provided\n";
-            string fname = args[0];
-            Dir* dir = get_dir(current_dir);
-            if (!dir) dir = root.get();  // Fallback to root
-            dir->files[fname] = make_unique<File>();
-            dir->files[fname]->content = "";
-            dir->files[fname]->perms = "rw-r--r--";
-            return "";
-        }}
-    };
+    auto it = command_registry.find(cmdPrefix);
+    if (it == command_registry.end())
+        return "Command not found: " + cmdPrefix + "\n";
 
-    auto handler_it = handlers.find(cmdPrefix);
-    if (handler_it != handlers.end()) {
-        return handler_it->second(args);
-    }
-    return "Command supported but not implemented in module\n";
+    return it->second(args);
 }
 
-bool LinuxModule::evaluate_condition(const YAML::Node& conditionSpec) {
-    if (!conditionSpec || !conditionSpec["type"]) return false;
-    string t = conditionSpec["type"].as<string>();
-    if (t == "current_dir") {
-        string expect = conditionSpec["dir"].as<string>();
-        return current_dir == expect;
-    }
-    if (t == "file_perm") {
-        string file = conditionSpec["file"].as<string>();
-        string expect = conditionSpec["perms"].as<string>();
-        auto dir_it = fs_tree.find(current_dir);
-        if (dir_it == fs_tree.end() || dir_it->second.find(file) == dir_it->second.end()) return false;
-        return dir_it->second[file].second == expect;
-    }
-    return false;
+std::string LinuxModule::resolve_path(const std::string& path_arg) const {
+    if (path_arg.empty()) return current_dir;
+    if (path_arg[0] == '/') return path_arg; // already absolute
+
+    // Relative path
+    if (current_dir == "/") return "/" + path_arg;
+    return current_dir + "/" + path_arg;
 }
 
-std::vector<std::string> LinuxModule::registered_prefixes() const {
-    return registered;
+pair<Dir*, string> LinuxModule::get_dir_and_file(const std::string& full_path) const {
+    string path = full_path;
+    if (path.empty() || path == "/") return {root.get(), ""};
+
+    size_t pos = path.find_last_of('/');
+    string dir_part = (pos == string::npos) ? "" : path.substr(0, pos);
+    string filename = (pos == string::npos) ? path : path.substr(pos + 1);
+
+    Dir* dir = get_dir(dir_part.empty() ? current_dir : dir_part);
+    return {dir, filename};
 }
 
-size_t LinuxModule::fs_size() const {
-    return fs_tree.size();
-}
-
-std::string LinuxModule::fs_debug() const {
-    return "FS size: " + to_string(fs_tree.size());
-}
-
-//  Helper: Get dir node (iterative traversal, handles relative/absolute, trailing /, . / ..)
 Dir* LinuxModule::get_dir(const string& path_arg) const {
-    string path = path_arg;
-    if (!path.empty() && path.back() == '/') path.pop_back();  // Strip trailing /
+    if (path_arg.empty() || path_arg == "/") return root.get();
 
-    if (path.empty() || path == ".") {
-        // . or empty = current (absolute)
-        path = current_dir;
-    }
-    if (path == "/") return root.get();
-    bool absolute = (!path.empty() && path[0] == '/');
-    string full_path = absolute ? path : current_dir + "/" + path;  // Relative/absolute
-
-    // Iterative traversal
-    Dir* current = root.get();
-    stringstream ss(path);
+    vector<string> parts;
+    stringstream ss(path_arg[0] == '/' ? path_arg.substr(1) : path_arg);
     string token;
     while (getline(ss, token, '/')) {
-        if (token.empty()) continue;
-        if (token == ".") continue;  // Skip
-        if (token == "..") {
-            // Walk up (stub: return current)
-            return current;
+        if (token.empty() || token == ".") continue;
+        parts.push_back(token);
+    }
+
+    Dir* current = root.get();
+    for (const auto& part : parts) {
+        if (part == "..") {
+            // Can't easily move up in pointer traversal — stop here
+            break;
         }
-        if (current->subdirs.count(token) == 0 || !current->subdirs[token]) return nullptr;
-        current = current->subdirs[token].get();
+        if (current->subdirs.count(part) == 0) return nullptr;
+        current = current->subdirs.at(part).get();
     }
     return current;
 }
 
+bool LinuxModule::evaluate_condition(const YAML::Node&) {
+    // Future: implement conditions like file existence, perms, etc.
+    return false;
+}
+
+std::vector<std::string> LinuxModule::registered_prefixes() const {
+    std::vector<std::string> out;
+    for (const auto& kv : command_registry)
+        out.push_back(kv.first);
+    return out;
+}
+
+bool LinuxModule::supports_command(const std::string& cmdPrefix) const {
+    return command_registry.find(cmdPrefix) != command_registry.end();
+}
+
+std::size_t LinuxModule::fs_size() const {
+    size_t count = 0;
+    function<void(const Dir&)> count_entries = [&](const Dir& dir) {
+        count += dir.files.size();
+        for (const auto& subdir_pair : dir.subdirs) {
+            count_entries(*subdir_pair.second);
+        }
+    };
+    count_entries(*root);
+    return count;
+}
+
+std::string LinuxModule::fs_debug() const {
+    return "FS ready at " + current_dir + " (root dirs: " + to_string(root->subdirs.size()) + ")";
+}
 
 // Factory
 std::shared_ptr<SmiteModule> create_module_linux() {
