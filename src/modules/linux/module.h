@@ -67,6 +67,8 @@ private:
 
     void register_builtin_commands();
     void register_command(const std::string& name, CommandHandler handler);
+    std::unordered_map<std::string, std::string> alias_registry;
+    std::vector<std::string> tokenize_command_string(const std::string& cmd) const;
 
     //--------------------------------------
     // Helpers for filesystem traversal

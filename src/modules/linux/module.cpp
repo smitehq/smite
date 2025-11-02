@@ -73,6 +73,37 @@ bool LinuxModule::load_from_path(const std::string& modulePath) {
     return true;
 }
 
+std::vector<std::string> LinuxModule::tokenize_command_string(const std::string& cmd) const {
+    std::vector<std::string> tokens;
+    std::string current;
+    bool in_single = false;
+    bool in_double = false;
+
+    for (size_t i = 0; i < cmd.size(); ++i) {
+        char c = cmd[i];
+        if (c == '\'' && !in_double) {
+            in_single = !in_single;
+            continue;
+        }
+        if (c == '"' && !in_single) {
+            in_double = !in_double;
+            continue;
+        }
+        if (std::isspace(c) && !in_single && !in_double) {
+            if (!current.empty()) {
+                tokens.push_back(current);
+                current.clear();
+            }
+        } else {
+            current += c;
+        }
+    }
+
+    if (!current.empty()) tokens.push_back(current);
+    return tokens;
+}
+
+
 // ---------------- Command Registration ----------------
 
 void LinuxModule::register_command(const std::string& name, std::function<std::string(const std::vector<std::string>&)> handler) {
@@ -170,6 +201,65 @@ void LinuxModule::register_builtin_commands() {
         for (const auto& a : args) out += a + " ";
         return out + "\n";
     });
+
+    register_command("alias", [this](const auto& args) -> std::string {
+        if (args.empty()) {
+            // List all aliases
+            std::stringstream out;
+            for (const auto& kv : alias_registry)
+                out << kv.first << "='" << kv.second << "'\n";
+            return out.str();
+        }
+
+        // Join everything back into one string so we can handle spaces in quotes properly
+        std::string line;
+        for (size_t i = 0; i < args.size(); ++i) {
+            if (i) line += " ";
+            line += args[i];
+        }
+
+        // Parse one or multiple alias definitions from the same command
+        std::stringstream ss(line);
+        std::string token;
+        while (std::getline(ss, token, ' ')) {
+            if (token.empty()) continue;
+
+            size_t eq = token.find('=');
+            if (eq == std::string::npos) continue;
+
+            std::string name = token.substr(0, eq);
+            std::string value = token.substr(eq + 1);
+
+            // Handle quoted values like 'ls -l'
+            if (!value.empty()) {
+                if ((value.front() == '\'' && value.back() == '\'') ||
+                    (value.front() == '"' && value.back() == '"')) {
+                    value = value.substr(1, value.size() - 2);
+                } else {
+                    // Support multi-word alias definitions like ll='ls -l'
+                    size_t next = line.find(value) + value.size();
+                    if (next < line.size() && line[next] == ' ') {
+                        value += line.substr(next, line.size() - next);
+                        // Trim quotes if present at the end
+                        if (!value.empty() && value.front() == '\'' && value.back() == '\'')
+                            value = value.substr(1, value.size() - 2);
+                    }
+                }
+            }
+
+            alias_registry[name] = value;
+        }
+
+        return "";
+    });
+
+
+    register_command("unalias", [this](const auto& args) -> std::string {
+        if (args.empty()) return "unalias: specify alias to remove\n";
+        for (const auto& a : args) alias_registry.erase(a);
+        return "";
+    });
+
 }
 
 // ---------------- Path Utilities ----------------
@@ -228,11 +318,26 @@ Dir* LinuxModule::get_dir(const string& path_arg) const {
 // ---------------- Module Interface ----------------
 
 std::string LinuxModule::run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) {
-    auto it = command_registry.find(cmdPrefix);
+    std::string actualCmd = cmdPrefix;
+    std::vector<std::string> actualArgs = args;
+
+    // Check if the command is a dynamic alias
+    auto aliasIt = alias_registry.find(cmdPrefix);
+    if (aliasIt != alias_registry.end()) {
+        auto aliasTokens = tokenize_command_string(aliasIt->second);
+        if (!aliasTokens.empty()) {
+            actualCmd = aliasTokens[0];
+            actualArgs = std::vector<std::string>(aliasTokens.begin() + 1, aliasTokens.end());
+            actualArgs.insert(actualArgs.end(), args.begin(), args.end()); // append original args
+        }
+    }
+
+    auto it = command_registry.find(actualCmd);
     if (it == command_registry.end())
-        return "Command not found: " + cmdPrefix + "\n";
-    return it->second(args);
+        return "Command not found: " + actualCmd + "\n";
+    return it->second(actualArgs);
 }
+
 
 bool LinuxModule::evaluate_condition(const YAML::Node&) { return false; }
 
