@@ -1,12 +1,14 @@
 #include "globals.h"
 #include "core/engine.h"
 #include "core/router.h"
+#include "core/shell.h"
 #include <memory>
 #include <iostream>
 
 // For prototype simplicity we will statically instantiate the Kubernetes module factory.
 // In practice you might dynamically dlopen plugins or map module folder names to factories.
 
+std::shared_ptr<SmiteModule> create_module_shell();
 std::shared_ptr<SmiteModule> create_module_linux();
 std::shared_ptr<SmiteModule> create_module_kubernetes();
 
@@ -27,6 +29,13 @@ int main(int argc, char** argv) {
 
     // create router & engine and register modules
     Engine engine("./modules"); // modules folder path (ignored for static proto)
+
+    auto shell = create_module_shell();  // Always first
+    if (!shell->load_from_path("./src/core/shell")) {
+        std::cerr << "Failed to load shell module\n";
+        return 1;
+    }
+    engine.add_module(shell);
 
     auto linux = create_module_linux();  // Always first
     if (!linux->load_from_path("./src/modules/linux")) {
