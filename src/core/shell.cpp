@@ -17,9 +17,6 @@ std::string Shell::name() const {
 }
 
 bool Shell::load_from_path(const std::string&) {
-   // If load_from_path can be called multiple times, reset the root so we start clean.
-    //root = std::make_unique<Dir>();
-
     // prepare base dirs and current/home
     home = std::string("/home/") + globals::PLAYER_NAME;
     current_dir = home;
@@ -44,18 +41,17 @@ void Shell::build_base_state() {
 
     // prepopulate a few files
     home_dir->files["readme.txt"] = make_unique<File>(File{
-        "Welcome to smiteOS!\nType 'ls' to see files.\n", "rw-r--r--"
+        "Welcome to smiteOS!\nType 'ls' to see files.\n"
     });
 
     // /etc/motd
     root->subdirs["etc"]->files["motd"] = make_unique<File>(File{
-        "Welcome adventurer.\nYour mission begins here.\n", "rw-r--r--"
+        "Welcome adventurer.\nYour mission begins here.\n"
     });
 
     // /bin/help (for flavor)
     root->subdirs["bin"]->files["help"] = make_unique<File>(File{
-        "Usage: help <command>\nCurrently supported: ls, cd, cat, echo, alias, unalias, pwd, touch.\n",
-        "rwxr-xr-x"
+        "Usage: help <command>\nCurrently supported: ls, cd, cat, echo, alias, unalias, pwd, touch.\n"
     });
 
     std::cout << "Base shell filesystem initialized at " << current_dir << "\n";
@@ -88,15 +84,18 @@ void Shell::register_builtin_commands() {
         if (long_format) {
             // simple total (approximate)
             size_t total_blocks = 0;
-            for (const auto& f : dir->files) total_blocks += f.second->content.size() / 512 + 1;
+            for (const auto& f : dir->files) total_blocks += (f.second->content.size() + 511) / 512;
             out << "total " << total_blocks << "\n";
 
+            // directories
             for (const auto& d : dir->subdirs) {
-                out << "drwxr-xr-x 1 " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " 0 Nov  1 00:00 " << d.first << "\n";
+                out << "drwxr-xr-x " << (2 + dir->subdirs.size()) << " " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " 4096 Nov  1 00:00 " << d.first << "\n";
             }
+
+            // files
             for (const auto& f : dir->files) {
                 out << f.second->perms << " 1 " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " "
-                    << f.second->content.size() << " Nov  1 00:00 "
+                    << f.second->content.size() << " " << f.second->modified_at << " "
                     << f.first << "\n";
             }
         } else {
@@ -160,63 +159,6 @@ void Shell::register_builtin_commands() {
         return out + "\n";
     });
 
-    // register_command("alias", [this](const auto& args) -> std::string {
-    //     if (args.empty()) {
-    //         // List all aliases
-    //         std::stringstream out;
-    //         for (const auto& kv : alias_registry)
-    //             out << kv.first << "='" << kv.second << "'\n";
-    //         return out.str();
-    //     }
-
-    //     // Join everything back into one string so we can handle spaces in quotes properly
-    //     std::string line;
-    //     for (size_t i = 0; i < args.size(); ++i) {
-    //         if (i) line += " ";
-    //         line += args[i];
-    //     }
-
-    //     // Parse one or multiple alias definitions from the same command
-    //     std::stringstream ss(line);
-    //     std::string token;
-    //     while (std::getline(ss, token, ' ')) {
-    //         if (token.empty()) continue;
-
-    //         size_t eq = token.find('=');
-    //         if (eq == std::string::npos) continue;
-
-    //         std::string name = token.substr(0, eq);
-    //         std::string value = token.substr(eq + 1);
-
-    //         // Handle quoted values like 'ls -l'
-    //         if (!value.empty()) {
-    //             if ((value.front() == '\'' && value.back() == '\'') ||
-    //                 (value.front() == '"' && value.back() == '"')) {
-    //                 value = value.substr(1, value.size() - 2);
-    //             } else {
-    //                 // Support multi-word alias definitions like ll='ls -l'
-    //                 size_t next = line.find(value) + value.size();
-    //                 if (next < line.size() && line[next] == ' ') {
-    //                     value += line.substr(next, line.size() - next);
-    //                     // Trim quotes if present at the end
-    //                     if (!value.empty() && value.front() == '\'' && value.back() == '\'')
-    //                         value = value.substr(1, value.size() - 2);
-    //                 }
-    //             }
-    //         }
-
-    //         alias_registry[name] = value;
-    //     }
-
-    //     return "";
-    // });
-
-    // register_command("unalias", [this](const auto& args) -> std::string {
-    //     if (args.empty()) return "unalias: specify alias to remove\n";
-    //     for (const auto& a : args) alias_registry.erase(a);
-    //     return "";
-    // });
-
 }
 
 // ---------------- Path Utilities ----------------
@@ -277,17 +219,6 @@ Dir* Shell::get_dir(const string& path_arg) const {
 std::string Shell::run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) {
     std::string actualCmd = cmdPrefix;
     std::vector<std::string> actualArgs = args;
-
-    // Check if the command is a dynamic alias
-    // auto aliasIt = alias_registry.find(cmdPrefix);
-    // if (aliasIt != alias_registry.end()) {
-    //     auto aliasTokens = Utils::tokenize_command(aliasIt->second);
-    //     if (!aliasTokens.empty()) {
-    //         actualCmd = aliasTokens[0];
-    //         actualArgs = std::vector<std::string>(aliasTokens.begin() + 1, aliasTokens.end());
-    //         actualArgs.insert(actualArgs.end(), args.begin(), args.end()); // append original args
-    //     }
-    // }
 
     auto it = command_registry.find(actualCmd);
     if (it == command_registry.end())
