@@ -1,9 +1,9 @@
-#include "command_router.h"
+#include "router.h"
 #include <sstream>
 #include <algorithm>
 #include <iostream>
 
-void CommandRouter::add_module(std::shared_ptr<SmiteModule> module) {
+void Router::add_module(std::shared_ptr<SmiteModule> module) {
     modules.push_back(module);
 
     // Precompute prefix → module map
@@ -16,7 +16,7 @@ void CommandRouter::add_module(std::shared_ptr<SmiteModule> module) {
     }
 }
 
-std::vector<std::string> CommandRouter::tokenize(const std::string& s) {
+std::vector<std::string> Router::tokenize(const std::string& s) {
     std::istringstream iss(s);
     std::vector<std::string> t;
     std::string tok;
@@ -25,7 +25,7 @@ std::vector<std::string> CommandRouter::tokenize(const std::string& s) {
 }
 
 // Optimized longest-prefix matching using precomputed map
-std::string CommandRouter::handle_input(const std::string& raw) {
+std::string Router::handle_input(const std::string& raw) {
     auto tokens = tokenize(raw);
     if (tokens.empty()) return "";
 
@@ -47,7 +47,7 @@ std::string CommandRouter::handle_input(const std::string& raw) {
     return ""; // No module handled it
 }
 
-std::vector<std::string> CommandRouter::list_commands() const {
+std::vector<std::string> Router::list_commands() const {
     std::vector<std::string> out;
     for (auto &m : modules) {
         auto pfx = m->registered_prefixes();
@@ -57,6 +57,6 @@ std::vector<std::string> CommandRouter::list_commands() const {
     return out;
 }
 
-std::vector<std::shared_ptr<SmiteModule>> CommandRouter::get_modules() const { 
+std::vector<std::shared_ptr<SmiteModule>> Router::get_modules() const { 
     return modules; 
 }

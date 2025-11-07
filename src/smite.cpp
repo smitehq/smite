@@ -1,6 +1,6 @@
 #include "globals.h"
 #include "core/engine.h"
-#include "core/command_router.h"
+#include "core/router.h"
 #include <memory>
 #include <iostream>
 
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     }
     engine.add_module(kube);
     // add to router (Engine internally could add modules; here we add it manually)
-    // For this simple wiring, we will create our own CommandRouter and Engine loop
+    // For this simple wiring, we will create our own Router and Engine loop
     // but to keep things short, assume Engine has a method to accept modules (or expand accordingly).
     // For brevity, call engine.repl() after appropriate wiring.
     // You can adapt per earlier core design.

@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_MAIN  // Catch2 self-tests
 #include "catch_amalgamated.hpp"
 #include "../src/core/engine.h"
-#include "../src/core/command_router.h"
+#include "../src/core/router.h"
 #include "../src/core/module_interface.h"
 #include "../src/modules/linux/module.h"
 #include <memory>
@@ -44,7 +44,7 @@ TEST_CASE("REPL Trim and Tokenize", "[repl]") {
     REQUIRE(trim("") == "");
 
     // Tokenize
-    auto tokens = CommandRouter::tokenize("  hello world  ");
+    auto tokens = Router::tokenize("  hello world  ");
     REQUIRE(tokens == vector<string>{"hello", "world"});
 }
 
@@ -68,7 +68,7 @@ TEST_CASE("REPL Engine Commands", "[repl]") {
 }
 
 TEST_CASE("Router Dispatch", "[router]") {
-    CommandRouter router;
+    Router router;
     auto stub = std::make_shared<StubModule>();
     router.add_module(stub);
 

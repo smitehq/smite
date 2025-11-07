@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include "module_interface.h"  // SmiteModule
 
-class CommandRouter {
+class Router {
 public:
     void add_module(std::shared_ptr<SmiteModule> module);
     std::string handle_input(const std::string& raw);

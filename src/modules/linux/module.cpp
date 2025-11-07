@@ -253,7 +253,6 @@ void LinuxModule::register_builtin_commands() {
         return "";
     });
 
-
     register_command("unalias", [this](const auto& args) -> std::string {
         if (args.empty()) return "unalias: specify alias to remove\n";
         for (const auto& a : args) alias_registry.erase(a);

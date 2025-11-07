@@ -8,7 +8,7 @@
 #include <unordered_set>
 #include <functional>
 #include "module_interface.h"
-#include "command_router.h"
+#include "router.h"
 
 class Engine {
 public:
@@ -33,7 +33,7 @@ public:
 
 private:
     std::string modules_dir;
-    CommandRouter router;
+    Router router;
     std::unordered_map<std::string, std::unordered_set<int>> active_quests;
 
     // Cached engine commands

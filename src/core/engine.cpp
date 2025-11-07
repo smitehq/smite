@@ -89,7 +89,7 @@ void Engine::register_command(const std::string& prefix, std::function<std::stri
 // Command dispatch
 // --------------------------
 std::string Engine::dispatch_command(const std::string& cmd) {
-    auto tokens = CommandRouter::tokenize(cmd);
+    auto tokens = Router::tokenize(cmd);
     if (tokens.empty()) return "";
 
     // Check engine commands first
