@@ -1,7 +1,7 @@
 # Compiler and flags
 CXX := clang++
 MYSYS2_PATH := C:/msys64/mingw64
-CXXFLAGS := -g -std=c++17 -finput-charset=UTF-8 -fexec-charset=UTF-8 -DYAML_CPP_STATIC_DEFINE -static -I. -I src -I$(MYSYS2_PATH)/include
+CXXFLAGS := -g -std=c++17 -finput-charset=UTF-8 -fexec-charset=UTF-8 -DYAML_CPP_STATIC_DEFINE -DNCURSES_STATIC -static -I. -I src -I$(MYSYS2_PATH)/include
 LIBS = -lyaml-cpp -lfmt -lreadline -lncurses -lstdc++fs
 LDFLAGS := -L$(MYSYS2_PATH)/lib $(LIBS) -mconsole -static
 

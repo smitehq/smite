@@ -79,8 +79,8 @@ bool Engine::load_modules() {
 
 void Engine::add_module(std::shared_ptr<SmiteModule> module) {
     router.add_module(module);
-    std::cout << "Added module: " << module->name() 
-              << " (supports " << module->registered_prefixes().size() << " commands)\n";
+    // std::cout << "Added module: " << module->name() 
+    //          << " (supports " << module->registered_prefixes().size() << " commands)\n";
 }
 
 // --------------------------
@@ -111,7 +111,7 @@ std::string Engine::dispatch_command(const std::string& cmd) {
 // REPL
 // --------------------------
 void Engine::repl() {
-    std::cout << "Smite.sh engine — type 'help' for commands, 'quit' to exit\n";
+    std::cout << "Smite.sh engine - type 'help' for commands, 'quit' to exit\n";
 
     // Load previous history
     read_history(".smite_history");

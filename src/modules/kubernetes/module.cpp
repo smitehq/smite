@@ -29,12 +29,12 @@ bool KubernetesModule::load_from_path(const std::string& modulePath) {
                     if (p["logs"]) for (auto l : p["logs"]) pod.logs.push_back(l.as<std::string>());
                     pods.push_back(pod);
                 }
-                std::cout << "Loaded " << pods.size() << " pods from state.yaml\n";
+                // std::cout << "Loaded " << pods.size() << " pods from state.yaml\n";
             }
         }},
         {"quests.yaml", true, [this](const Node& node) {
             quests = node;
-            std::cout << "Loaded quests.yaml with " << quests.size() << " top-level keys\n";
+            // std::cout << "Loaded quests.yaml with " << quests.size() << " top-level keys\n";
         }}
     };
 
@@ -56,7 +56,7 @@ bool KubernetesModule::load_from_path(const std::string& modulePath) {
 
     register_builtin_commands();
 
-    std::cout << "Module load complete (all good: " << (all_good ? "true" : "false") << ")\n";
+    // std::cout << "Module load complete (all good: " << (all_good ? "true" : "false") << ")\n";
     return all_good;
 }
 
@@ -65,6 +65,12 @@ void KubernetesModule::register_command(const std::string& name, CommandHandler 
 }
 
 void KubernetesModule::register_builtin_commands() {
+    register_command("kubectl version", [this](const auto& args) -> std::string {
+        std::ostringstream out;
+        out << "kubectl: command not found: " << args[0] << "\n";
+        return out.str();
+    });
+
     register_command("kubectl get pods", [this](const auto&) -> std::string {
         std::ostringstream out;
         out << "NAME\t\tREADY\tSTATUS\tRESTARTS\n";

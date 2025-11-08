@@ -1,11 +1,13 @@
 #include "../globals.h"
 #include "utils.h"
 #include "shell.h"
+#include "nano.h"
 #include <iostream>
 #include <filesystem>
 #include <sstream>
 #include <algorithm>
 #include <readline/readline.h>
+
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -55,10 +57,10 @@ void Shell::build_base_state() {
 
     // /bin/help (for flavor)
     root->subdirs["bin"]->files["help"] = make_unique<File>(File{
-        "Usage: help <command>\nCurrently supported: ls, cd, cat, echo, alias, unalias, pwd, touch.\n"
+        "Usage: help <command>\nCurrently supported: ls, cd, cat, echo, pwd, touch.\n"
     });
 
-    std::cout << "Base shell filesystem initialized at " << current_dir << "\n";
+    // std::cout << "Base shell filesystem initialized at " << current_dir << "\n";
 }
 
 
@@ -153,7 +155,7 @@ void Shell::register_builtin_commands() {
         auto [dir, filename] = get_dir_and_file(file_path);
 
         if (!dir) return "touch: Invalid path\n";
-        dir->files[filename] = make_unique<File>(File{"", "rw-r--r--"});
+        dir->files[filename] = make_unique<File>(File{""});
         return "";
     });
 
@@ -161,6 +163,19 @@ void Shell::register_builtin_commands() {
         string out;
         for (const auto& a : args) out += a + " ";
         return out + "\n";
+    });
+
+    register_command("nano", [this](const auto& args) -> string {
+        if (args.empty()) return "nano: No file provided\n";
+        string file_path = resolve_path(args[0]);
+
+        auto [dir, filename] = get_dir_and_file(file_path);
+        if (!dir) return "nano: " + file_path + ": No such directory\n";
+
+        Nano nano;
+        nano.open(filename, dir->files[filename]->content);
+
+        return "File closed.\n";
     });
 
 }
