@@ -5,8 +5,9 @@
 #include <string>
 #include <sstream>
 #include <cstddef>
+#include <functional>
 
-bool Nano::open(const std::string& name, const std::string& content) {
+bool Nano::open(const std::string& name, const std::string& content, std::function<void(const std::string&)> save_callback) {
     filename = name;
     buffer.clear();
     std::istringstream iss(content);
@@ -76,7 +77,9 @@ bool Nano::open(const std::string& name, const std::string& content) {
                 std::string out;
                 for (auto& l : buffer) out += l + "\n";
 
-                // TODO: write out to virtual FS
+                // call the callback if provided
+                if (save_callback) save_callback(out);
+
                 mvwprintw(footer_win, 0, 0, "File saved: %s", filename.c_str());
                 wclrtoeol(footer_win);
                 wrefresh(footer_win);

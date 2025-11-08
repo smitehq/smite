@@ -1,11 +1,12 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <functional>
 
 class Nano {
 public:
     // Opens an in-memory buffer for editing
-    bool open(const std::string& name, const std::string& content);
+    bool open(const std::string& name, const std::string& content, std::function<void(const std::string&)> save_callback = nullptr);
 
 private:
     std::string filename;

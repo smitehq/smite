@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <readline/readline.h>
 
-
 using namespace std;
 namespace fs = std::filesystem;
 
@@ -169,11 +168,25 @@ void Shell::register_builtin_commands() {
         if (args.empty()) return "nano: No file provided\n";
         string file_path = resolve_path(args[0]);
 
-        auto [dir, filename] = get_dir_and_file(file_path);
+        auto [dir, filename_opt] = get_dir_and_file(file_path);
         if (!dir) return "nano: " + file_path + ": No such directory\n";
 
+        string filename;
+        if (dir->files.find(filename_opt) == dir->files.end()) {
+            // File doesn't exist: create it
+            filename = filename_opt;
+            dir->files[filename] = make_unique<File>(File{"\n"});
+        } else {
+            // File exists
+            filename = filename_opt;
+        }
+
+        auto& file_ptr = dir->files[filename];  // safe now
+
         Nano nano;
-        nano.open(filename, dir->files[filename]->content);
+        nano.open(filename, file_ptr->content, [&](const std::string& new_content) {
+            file_ptr->content = new_content;  // update virtual file
+        });
 
         return "File closed.\n";
     });
