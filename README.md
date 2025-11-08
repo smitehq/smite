@@ -49,7 +49,7 @@ Run `./smite.exe` - the banner welcomes you, loads modules, and drops you into t
 
 #### Engine
 
-```bash
+```
 help → show available modules and commands
 modules → list loaded modules
 quests → list available quests
@@ -65,7 +65,7 @@ ls, cd, cat, chmod, touch, nano
 
 #### Kubernetes Module
 
-```bash
+```
 kubectl get pods
 kubectl get pods -o wide
 kubectl describe pod <name>
@@ -77,7 +77,7 @@ kubectl logs <pod>
 
 #### AWS Module
 
-```bash
+```
 aws eks list-clusters
 aws eks describe-nodegroup <cluster> <nodegroup>
 aws eks update-nodegroup-config <cluster> <nodegroup> <count>
@@ -148,7 +148,7 @@ Activate via `quests <module> <id>`:
 -   Uses static linking.
 -   Supports MSYS2, Linux, and macOS (adjust paths).
 -   Debugging:
-    ```console
+    ```
     make clean && make DEBUG=1
     ```
 
