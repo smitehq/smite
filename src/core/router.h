@@ -15,6 +15,11 @@ public:
     std::vector<std::shared_ptr<SmiteModule>> get_modules() const;
     static std::vector<std::string> tokenize(const std::string& s);
 
+    // tab completion support
+    std::vector<std::string> complete_command(const std::vector<std::string>& tokens, size_t token_index, const std::string& current_token) const;
+
+    void setup_readline_completion();  // call once after adding all modules
+
 private:
     std::vector<std::shared_ptr<SmiteModule>> modules;
 

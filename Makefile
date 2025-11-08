@@ -2,7 +2,8 @@
 CXX := clang++
 MYSYS2_PATH := C:/msys64/mingw64
 CXXFLAGS := -g -std=c++17 -finput-charset=UTF-8 -fexec-charset=UTF-8 -DYAML_CPP_STATIC_DEFINE -static -I. -I src -I$(MYSYS2_PATH)/include
-LDFLAGS := -L$(MYSYS2_PATH)/lib -lyaml-cpp -lfmt -mconsole -lstdc++fs -static
+LIBS = -lyaml-cpp -lfmt -lreadline -lncurses -lstdc++fs
+LDFLAGS := -L$(MYSYS2_PATH)/lib $(LIBS) -mconsole -static
 
 # MSYS2 tools path (for Unix commands like mkdir/rm)
 MSYS2_TOOLS := C:/msys64/usr/bin

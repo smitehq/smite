@@ -4,6 +4,8 @@
 #include <iostream>
 #include <yaml-cpp/yaml.h>
 #include <sstream>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 namespace fs = std::filesystem;
 
@@ -108,27 +110,41 @@ std::string Engine::dispatch_command(const std::string& cmd) {
 // --------------------------
 void Engine::repl() {
     std::cout << "Smite.sh engine — type 'help' for commands, 'quit' to exit\n";
-    std::string line;
+
+    // Load previous history
+    read_history(".smite_history");
+
+    // setup for auto-completion
+    router.setup_readline_completion();
+
     while (true) {
-        std::cout << "$ " << std::flush;
-        if (!std::getline(std::cin, line)) break;
-        std::string cmd = trim(line);
+        char* input = readline("$ ");
+        if (!input) break;  // Ctrl+D
+        std::string cmd = trim(input);
+        if (!cmd.empty()) add_history(input);
+        free(input);
+
         if (cmd.empty()) continue;
 
-        // Handle && chaining
+        // Handle multi-command chaining "&&"
         size_t and_pos = cmd.find(" && ");
         if (and_pos != std::string::npos) {
             std::string cmd1 = trim(cmd.substr(0, and_pos));
             std::string cmd2 = trim(cmd.substr(and_pos + 4));
             if (!cmd1.empty() && !cmd2.empty()) {
-                std::string out1 = dispatch_command(cmd1);
-                if (!out1.empty()) std::cout << out1;
-                if (out1.find("Error") == std::string::npos &&
-                    out1.find("Unknown") == std::string::npos) {
-                    std::string out2 = dispatch_command(cmd2);
-                    if (!out2.empty()) std::cout << out2;
-                } else {
-                    std::cout << " (Chain stopped on error)\n";
+                try {
+                    std::string out1 = dispatch_command(cmd1);
+                    if (!out1.empty()) std::cout << out1;
+                    if (out1.find("Error") == std::string::npos &&
+                        out1.find("Unknown") == std::string::npos) {
+                        std::string out2 = dispatch_command(cmd2);
+                        if (!out2.empty()) std::cout << out2;
+                    } else {
+                        std::cout << " (Chain stopped on error)\n";
+                    }
+                } catch (const std::runtime_error&) {
+                    std::cout << "\nExiting REPL.\n";
+                    break;
                 }
                 continue;
             }
@@ -143,6 +159,9 @@ void Engine::repl() {
             break;
         }
     }
+
+    // Save history
+    write_history(".smite_history");
 }
 
 // --------------------------
