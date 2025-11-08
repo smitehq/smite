@@ -158,7 +158,8 @@ Activate via `quests <module> <id>`:
 
 -   PRs welcome - focus on gameplay feel and extensibility.
 -   Code style: modern C++17, RAII, smart pointers.
--   Scenarios: add YAMLs under `/modules/<name>/`; module state `state.yaml` and quests in `quests.yaml`.
+-   Scenarios: add YAMLs under `/modules/<name>/`
+    - Module state in `state.yaml` and quests in `quests.yaml`
     
 ---
 
