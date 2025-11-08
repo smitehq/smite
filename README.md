@@ -10,12 +10,12 @@ Built with C++17, *yaml-cpp* for state, *fmt* for styled output, and a modular r
 
 ## Features
 
--   *Interactive REPL*: Type shell commands, K8s `kubectl`, or AWS CLI-output feels authentic.
--   *Cluster-Aware K8s Simulator*: Emulates nodes, pods, and events; supports `kubectl get pods -o wide`, `describe`, and `logs`.
--   *Quests & Progression*: Scenarios like _CrashLoopBackOff_ or misconfigurations with progression tracking.
--   *Chaining Support*: `cd /etc && chmod rw-r--r-- config`-executes sequentially.
--   *Static Linking*: Single binary (`smite.exe`), no DLL dependencies.
--   *YAML-Driven State*: Edit `state.yaml` to define clusters, nodes, pods, and events.
+-   **Interactive REPL**: Type shell commands, K8s `kubectl`, or AWS CLI-output feels authentic.
+-   **Cluster-Aware K8s Simulator**: Emulates nodes, pods, and events; supports `kubectl get pods -o wide`, `describe`, and `logs`.
+-   **Quests & Progression**: Scenarios like _CrashLoopBackOff_ or misconfigurations with progression tracking.
+-   **Chaining Support**: `cd /etc && chmod rw-r--r-- config`-executes sequentially.
+-   **Static Linking**: Single binary (`smite.exe`), no DLL dependencies.
+-   **YAML-Driven State**: Edit `state.yaml` to define clusters, nodes, pods, and events.
     
 ---
 
