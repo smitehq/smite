@@ -31,6 +31,9 @@ public:
     // Engine command registration
     void register_command(const std::string& prefix, std::function<std::string(const std::vector<std::string>&)> handler);
 
+    // module cross talk
+    std::shared_ptr<SmiteModule> get_module_by_name(const std::string &name) const;
+
 private:
     std::string modules_dir;
     Router router;
@@ -44,6 +47,7 @@ private:
     // Helpers
     static std::string trim(const std::string& str);
     static void cout_flush(const std::string& msg);
+    std::string get_prompt();
 };
 
 #endif

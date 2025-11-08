@@ -1,4 +1,5 @@
 #pragma once
+#include "router.h"
 #include <string>
 #include <vector>
 #include <map>
@@ -69,6 +70,11 @@ public:
     std::string resolve_path(const std::string& path_arg) const;
     std::pair<Dir*, std::string> get_dir_and_file(const std::string& full_path) const;
     Dir* get_dir(const std::string& path_arg) const;
+    std::string get_current_dir() const { return current_dir; }
+    std::string get_home() const { return home; }
+
+    // tab autocompletion for virtual fs
+    void setup_readline_completion(Router* router);
 
 protected:
     std::unique_ptr<Dir> root;

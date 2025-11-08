@@ -1,5 +1,7 @@
+#include "globals.h"
 #include "utils.h"
 #include "engine.h"
+#include "shell.h"
 #include <filesystem>
 #include <iostream>
 #include <yaml-cpp/yaml.h>
@@ -115,10 +117,11 @@ void Engine::repl() {
     read_history(".smite_history");
 
     // setup for auto-completion
-    router.setup_readline_completion();
+    auto shell = std::dynamic_pointer_cast<Shell>(get_module_by_name("shell"));
+    shell->setup_readline_completion(&router);
 
     while (true) {
-        char* input = readline("$ ");
+        char* input = readline(get_prompt().c_str());
         if (!input) break;  // Ctrl+D
         std::string cmd = trim(input);
         if (!cmd.empty()) add_history(input);
@@ -178,6 +181,15 @@ void Engine::cout_flush(const std::string& msg) {
     std::cout << msg << std::flush;
 }
 
+std::string Engine::get_prompt() {
+    auto shell = std::dynamic_pointer_cast<Shell>(get_module_by_name("shell"));
+    std::string user = globals::PLAYER_NAME;
+    std::string host = globals::HOSTNAME;
+    std::string dir = shell ? shell->get_current_dir() : "~";
+    if (dir == shell->get_home()) dir = "~";
+    return fmt::format("\x1b[1;32m{}@{}\x1b[0m:\x1b[34m{}\x1b[0m$ ", user, host, dir);
+}
+
 // --------------------------
 // Quests
 // --------------------------
@@ -228,4 +240,12 @@ void Engine::handle_quests(const std::vector<std::string>& tokens) {
     } catch (...) {
         cout_flush("Invalid quest ID; must be integer.\n");
     }
+}
+
+// expose means for module cross talk
+std::shared_ptr<SmiteModule> Engine::get_module_by_name(const std::string& name) const {
+    for (auto& mod : router.get_modules()) {
+        if (mod->name() == name) return mod;
+    }
+    return nullptr;
 }

@@ -5,11 +5,15 @@
 #include <filesystem>
 #include <sstream>
 #include <algorithm>
+#include <readline/readline.h>
 
 using namespace std;
 namespace fs = std::filesystem;
 
-// --- after ---
+// Pointers to global state for completion
+static Router* g_router_for_completion = nullptr;
+static Shell* g_shell_for_completion = nullptr;
+
 Shell::Shell() : root(std::make_unique<Dir>()), command_registry(), alias_registry() {}
 
 std::string Shell::name() const {
@@ -243,4 +247,81 @@ bool Shell::supports_command(const std::string& cmdPrefix) const {
 
 std::shared_ptr<SmiteModule> create_module_shell() {
     return std::make_shared<Shell>();
+}
+
+// ---------------- Autocompletion ----------------
+
+char* universal_generator(const char* text, int state) {
+    static std::vector<std::string> matches;
+    static size_t index;
+
+    if (state == 0) {
+        matches.clear();
+        index = 0;
+
+        // Current line in readline
+        std::string line(rl_line_buffer);
+        auto tokens = Router::tokenize(line);
+        bool after_space = !line.empty() && isspace(line.back());
+
+        // Determine token_index and current_token
+        size_t token_index;
+        std::string current_token;
+        if (tokens.empty() || after_space) {
+            token_index = tokens.size(); // new token
+            current_token = "";
+        } else {
+            token_index = tokens.size() - 1;
+            current_token = tokens.back();
+        }
+
+        // --- Step 1: Command completion ---
+        if (g_router_for_completion) {
+            auto cmd_matches = g_router_for_completion->complete_command(tokens, token_index, current_token);
+            matches.insert(matches.end(), cmd_matches.begin(), cmd_matches.end());
+        }
+
+        // --- Step 2: Filesystem completion ---
+        // Only attempt if no command completions OR if user is typing arguments (token_index > 0)
+        if (matches.empty() && g_shell_for_completion && token_index > 0) {
+            auto dir = g_shell_for_completion->get_dir(g_shell_for_completion->get_current_dir());
+            if (dir) {
+                // Files
+                for (const auto& [name, file] : dir->files) {
+                    if (name.rfind(current_token, 0) == 0)
+                        matches.push_back(name);
+                }
+                // Subdirectories
+                for (const auto& [name, subdir] : dir->subdirs) {
+                    if (name.rfind(current_token, 0) == 0)
+                        matches.push_back(name + "/");
+                }
+            }
+        }
+
+        // Sort and remove duplicates
+        std::sort(matches.begin(), matches.end());
+        matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
+    }
+
+    // Return the next match
+    if (index < matches.size()) {
+        return strdup(matches[index++].c_str()); // readline will free
+    }
+
+    return nullptr;
+}
+
+// Setup readline to only use virtual shell files for completion
+// --- Setup readline completion ---
+void Shell::setup_readline_completion(Router* router) {
+    g_router_for_completion = router;
+    g_shell_for_completion = this;
+
+    rl_attempted_completion_function = [](const char* text, int start, int end) -> char** {
+        return rl_completion_matches(text, universal_generator);
+    };
+    rl_completion_entry_function = universal_generator; // use our virtual files
+    rl_completion_append_character = ' ';
+    rl_basic_word_break_characters = " \t\n";
 }
