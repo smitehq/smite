@@ -96,7 +96,7 @@ NAME       READY  STATUS            RESTARTS  NODE     IP          IMAGE
 backend    0/1    CrashLoopBackOff  5         node-1   10.244.0.5  my-backend-image:v1
 frontend   1/1    Running           0         node-2   10.244.0.6  nginx:latest
 
-zaphod@lappy486:~$ kubectl get events
+zaphod@lappy486:~$ kubectl get events wide
 LAST SEEN            TYPE     REASON    OBJECT    MESSAGE
 2025-10-24T14:00:01  Warning  Failed    backend   Failed to pull secret 'db-secret'
 2025-10-24T14:01:01  Normal   Pulling   backend   Pulling image "my-backend-image:v1"

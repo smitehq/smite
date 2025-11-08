@@ -25,7 +25,8 @@ int main(int argc, char** argv) {
         // Could add other flags: --help, --list-modules, etc.
     }
 
-    fmt::print(globals::style::header, "{} Welcome, Apprentice. Your journey begins.\n\n", globals::style::smite);
+    fmt::print(globals::style::header, "{} Welcome, Apprentice. Your journey begins.\n", globals::style::smite);
+    std::cout << "smite.sh engine - type 'help' for commands, 'quit' to exit\n" << std::endl;
 
     // create router & engine and register modules
     Engine engine("./modules"); // modules folder path (ignored for static proto)

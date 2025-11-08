@@ -111,8 +111,6 @@ std::string Engine::dispatch_command(const std::string& cmd) {
 // REPL
 // --------------------------
 void Engine::repl() {
-    std::cout << "Smite.sh engine - type 'help' for commands, 'quit' to exit\n";
-
     // Load previous history
     read_history(".smite_history");
 
@@ -161,6 +159,8 @@ void Engine::repl() {
             std::cout << "\nExiting REPL.\n";
             break;
         }
+
+        std::cout << std::endl;
     }
 
     // Save history
