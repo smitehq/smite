@@ -21,7 +21,7 @@ Built with C++17, *yaml-cpp* for state, *fmt* for styled output, and a modular r
 
 ## Installation
 
-1.  *Prerequisites*
+1.  **Prerequisites**
     
     -   MSYS2 MinGW-w64 (Windows) or Clang toolchain (Linux/macOS)
     -   Clang++ 17+
@@ -30,7 +30,7 @@ Built with C++17, *yaml-cpp* for state, *fmt* for styled output, and a modular r
         pacman -S mingw-w64-x86_64-{clang,yaml-cpp,fmt,ncurses,readline}
         ```
         
-2.  *Clone & Build*
+2.  **Clone & Build**
     
     ```bash
     git clone git@github.com:smitehq/smite.git
@@ -88,21 +88,21 @@ aws eks update-nodegroup-config <cluster> <nodegroup> <count>
 
 ### Example Session
 
-```bash
+```console
 ⚡  Welcome, Apprentice. Your journey begins.
 
-$ kubectl get pods -o wide
+zaphod@lappy486:~$ kubectl get pods -o wide
 NAME       READY  STATUS            RESTARTS  NODE     IP          IMAGE
 backend    0/1    CrashLoopBackOff  5         node-1   10.244.0.5  my-backend-image:v1
 frontend   1/1    Running           0         node-2   10.244.0.6  nginx:latest
 
-$ kubectl get events
+zaphod@lappy486:~$ kubectl get events
 LAST SEEN            TYPE     REASON    OBJECT    MESSAGE
 2025-10-24T14:00:01  Warning  Failed    backend   Failed to pull secret 'db-secret'
 2025-10-24T14:01:01  Normal   Pulling   backend   Pulling image "my-backend-image:v1"
 2025-10-24T14:01:30  Warning  BackOff   backend   Back-off restarting failed container
 
-$ kubectl describe pod backend
+zaphod@lappy486:~$ kubectl describe pod backend
 Name:         backend
 Node:         node-1
 Status:       CrashLoopBackOff
@@ -124,10 +124,8 @@ Events:
 
 ## Modules
 
-| --- | --- |
-
 | Module | Description |
-
+| --- | --- |
 | Linux | File and permission management simulator. |
 | Kubernetes | Cluster-aware emulation of nodes, pods, and events. |
 | AWS | Simulates EKS clusters and nodegroup scaling. |
