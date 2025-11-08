@@ -26,13 +26,13 @@ Built with C++17, *yaml-cpp* for state, *fmt* for styled output, and a modular r
     -   MSYS2 MinGW-w64 (Windows) or Clang toolchain (Linux/macOS)
     -   Clang++ 17+
         
-        ```console
+        ```bash
         pacman -S mingw-w64-x86_64-{clang,yaml-cpp,fmt,ncurses,readline}
         ```
         
 2.  **Clone & Build**
     
-    ```console
+    ```bash
     git clone git@github.com:smitehq/smite.git
     cd smite
     make # or make clean && make
