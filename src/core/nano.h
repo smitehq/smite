@@ -13,4 +13,7 @@ private:
 
     void render();
     void handle_input(int ch);
+
+    int cursor_row_ = 0;
+    int cursor_col_ = 0;
 };
