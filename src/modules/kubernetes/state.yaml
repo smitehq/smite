@@ -1,12 +1,45 @@
 cluster:
-  pods:
-    - name: backend
-      status: CrashLoopBackOff
-      restarts: 5
-      logs:
-        - "2025-10-24T14:00:01 Error: cannot connect to database"
-    - name: frontend
-      status: Running
-      restarts: 0
-      logs:
-        - "Started nginx"
+  name: cluster-1
+  nodes:
+    - name: node-1
+      ip: 10.244.0.5
+      pods:
+        - name: backend
+          status: CrashLoopBackOff
+          restarts: 5
+          image: my-backend-image:v1
+          container_state: waiting
+          last_state:
+            reason: Error
+            exit_code: 1
+            started: "2025-10-24T14:00:00"
+            finished: "2025-10-24T14:00:01"
+          events:
+            - type: Warning
+              reason: Failed
+              message: Failed to pull secret 'db-secret'
+              timestamp: "2025-10-24T14:00:01"
+            - type: Normal
+              reason: Pulling
+              message: Pulling image "my-backend-image:v1"
+              timestamp: "2025-10-24T14:01:01"
+            - type: Warning
+              reason: BackOff
+              message: Back-off restarting failed container
+              timestamp: "2025-10-24T14:01:30"
+          logs:
+            - timestamp: "2025-10-24T14:00:01"
+              message: "Error: cannot connect to database"
+            - timestamp: "2025-10-24T14:02:15"
+              message: "Retrying connection to database"
+  
+    - name: node-2
+      ip: 10.244.0.6
+      pods:
+        - name: frontend
+          status: Running
+          restarts: 0
+          image: nginx:latest
+          logs:
+            - timestamp: "2025-10-24T14:05:00"
+              message: "Started nginx"

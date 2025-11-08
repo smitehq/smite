@@ -12,12 +12,47 @@
 #include <iostream>
 #include <algorithm>
 
+struct PodEvent {
+    std::string type;       // e.g., "Warning" or "Normal"
+    std::string reason;     // e.g., "BackOff", "Started"
+    std::string message;    // descriptive message
+    std::string timestamp;  // optional, ISO format
+};
+
+struct LastState {
+    std::string reason;     // why container terminated
+    int exit_code = 0;      // exit code from container
+    std::string started;    // start time
+    std::string finished;   // end time
+};
+
+struct PodLog {
+    std::string timestamp;
+    std::string message;
+};
+
 struct Pod {
     std::string name;
-    std::string ns = "default";
-    std::string status;
-    int restarts = 0;
-    std::vector<std::string> logs;
+    std::string ns = "default";   // default namespace
+    std::string status;            // "Running", "CrashLoopBackOff", etc.
+    int restarts = 0;              // number of restarts
+    std::string container_state;   // e.g., "Waiting", "Terminated", "Running"
+    LastState last_state;          // info about last termination
+    std::vector<PodEvent> events;  // events for describe output
+    std::string ip;
+    std::string image;
+    std::vector<PodLog> logs;      // container logs
+};
+
+struct Node {
+    std::string name;
+    std::string ip;
+    std::vector<Pod> pods;
+};
+
+struct Cluster {
+    std::string name;
+    std::vector<Node> nodes;
 };
 
 class KubernetesModule : public SmiteModule {
@@ -38,6 +73,7 @@ public:
 private:
     std::string path;
     std::vector<Pod> pods;
+    std::vector<Node> nodes;
     YAML::Node quests; // raw quests
 
     //--------------------------------------
@@ -53,6 +89,8 @@ private:
     // Helper
     //--------------------------------------
     auto find_pod(const std::string& pod_name) -> decltype(pods.begin());
+    auto find_node(const std::string& node_name) -> decltype(nodes.begin());
+    int random_usage(int max);
 };
 
 #endif // MODULES_KUBERNETES_MODULE_H
