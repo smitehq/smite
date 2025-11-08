@@ -137,9 +137,9 @@ Each module registers its own command namespace (`kubectl`, `aws`, etc.) and sta
 
 Activate via `quests <module> <id>`:
 
--   *Kubernetes* – “The Crashing Pod”: Fix a backend in CrashLoopBackOff.
--   *AWS* – “Scale the Node Group”: Increase node count to resolve load issues.
--   *Linux* – “Fix Config Permissions”: Correct `/etc/config` file permissions.
+-   **Kubernetes** – “The Crashing Pod”: Fix a backend in CrashLoopBackOff.
+-   **AWS** – “Scale the Node Group”: Increase node count to resolve load issues.
+-   **Linux** – “Fix Config Permissions”: Correct `/etc/config` file permissions.
     
 ---
 
@@ -148,7 +148,6 @@ Activate via `quests <module> <id>`:
 -   Uses static linking.
 -   Supports MSYS2, Linux, and macOS (adjust paths).
 -   Debugging:
-    
     ```console
     make clean && make DEBUG=1
     ```
