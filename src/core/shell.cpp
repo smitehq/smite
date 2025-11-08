@@ -166,22 +166,15 @@ void Shell::register_builtin_commands() {
 
     register_command("nano", [this](const auto& args) -> string {
         if (args.empty()) return "nano: No file provided\n";
-        string file_path = resolve_path(args[0]);
 
-        auto [dir, filename_opt] = get_dir_and_file(file_path);
+        std::string file_path = resolve_path(args[0]);
+        auto [dir, filename] = get_dir_and_file(file_path);
+
         if (!dir) return "nano: " + file_path + ": No such directory\n";
 
-        string filename;
-        if (dir->files.find(filename_opt) == dir->files.end()) {
-            // File doesn't exist: create it
-            filename = filename_opt;
-            dir->files[filename] = make_unique<File>(File{"\n"});
-        } else {
-            // File exists
-            filename = filename_opt;
-        }
-
-        auto& file_ptr = dir->files[filename];  // safe now
+        // Ensure the file exists in the directory
+        auto& file_ptr = dir->files[filename];
+        if (!file_ptr) file_ptr = std::make_unique<File>(File{"\n"});
 
         Nano nano;
         nano.open(filename, file_ptr->content, [&](const std::string& new_content) {
@@ -190,6 +183,7 @@ void Shell::register_builtin_commands() {
 
         return "File closed.\n";
     });
+
 
 }
 
