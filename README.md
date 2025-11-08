@@ -2,100 +2,173 @@
 
 ![Smite Logo](https://avatars.githubusercontent.com/u/240213050?s=88&v=4)
 
-**smite.sh** is a CLI-based troubleshooting simulator for DevOps apprentices. Dive into interactive scenarios mimicking real-world Kubernetes (K8s), AWS EKS, and Linux environments. Learn by breaking and fixing—quests guide you through outages, scaling issues, and config mishaps, all in a safe, emulated REPL.
+*smite.sh* is a CLI-based troubleshooting simulator for DevOps apprentices. Dive into interactive scenarios mimicking real-world Kubernetes (K8s), AWS EKS, and Linux environments. Learn by breaking and fixing-quests guide you through outages, scaling issues, and config mishaps, all in a safe, emulated REPL.
 
-Built with C++17, yaml-cpp for state, fmt for styled output, and a modular router for plug-and-play extensions. No GC, but RAII keeps it tight. Since October 2025, it's your journey to mastery.
+Built with C++17, *yaml-cpp* for state, *fmt* for styled output, and a modular router for plug-and-play extensions.
+
+---
 
 ## Features
-- **Interactive REPL**: Type shell commands, K8s `kubectl`, or AWS CLI—output feels real (tables, JSON, errors).
-- **Modular Design**: Load/unload environments (K8s, AWS, Linux shell)—commands route by prefix.
-- **Quests & Progress**: Opt-in challenges with conditions (e.g., "fix CrashLoopBackOff"). Eval during load or post-command.
-- **Chaining Support**: `cd /etc && chmod rw-r--r-- config` works—stops on errors.
-- **Static Linking**: Single `smite.exe`—portable, no DLL hell (MinGW/Clang).
-- **Emulated State**: YAML-driven FS/pods/nodes—edit for new scenarios.
+
+-   *Interactive REPL*: Type shell commands, K8s `kubectl`, or AWS CLI-output feels authentic.
+-   *Cluster-Aware K8s Simulator*: Emulates nodes, pods, and events; supports `kubectl get pods -o wide`, `describe`, and `logs`.
+-   *Quests & Progression*: Scenarios like _CrashLoopBackOff_ or misconfigurations with progression tracking.
+-   *Chaining Support*: `cd /etc && chmod rw-r--r-- config`-executes sequentially.
+-   *Static Linking*: Single binary (`smite.exe`), no DLL dependencies.
+-   *YAML-Driven State*: Edit `state.yaml` to define clusters, nodes, pods, and events.
+    
+---
 
 ## Installation
-1. **Prerequisites**:
-   - MSYS2 MinGW-w64 (for Windows; or native on Linux/macOS).
-   - Clang++ (15+ recommended; `pacman -S mingw-w64-x86_64-clang` in MSYS2).
 
-2. **Clone & Build**:
+1.  *Prerequisites*
+    
+    -   MSYS2 MinGW-w64 (Windows) or Clang toolchain (Linux/macOS)
+    -   Clang++ 17+
+        
+        ```bash
+        pacman -S mingw-w64-x86_64-{clang,yaml-cpp,fmt,ncurses,readline}
+        ```
+        
+2.  *Clone & Build*
+    
     ```bash
     git clone git@github.com:smitehq/smite.git
     cd smite
-    make  # Or make clean && make
-    ./smite.exe  # Or ./smite on Linux/macOS
+    make # or make clean && make
+    ./smite.exe # Windows
+    ./smite # Linux/macOS
     ```
+    
+---
 
 ## Usage
-Run `./smite.exe`—welcome banner loads modules, then REPL (`$ ` prompt).
+
+Run `./smite.exe` - the banner welcomes you, loads modules, and drops you into the `$` REPL.
 
 ### REPL Commands
-- **Engine Commands**:
-- `help` → All prefixes + engine cmds.
-- `modules` → Loaded modules (e.g., linux (6 cmds), kubernetes (5)).
-- `quests` → List all; `quests kubernetes` → module-specific; `quests kubernetes 0` → Activate quest 0.
-- **Module Commands**:
-- Linux: `ls`, `cd /etc`, `cat notes`, `chmod rw-r--r-- config`, `touch newfile`.
-- K8s: `kubectl get pods`, `kubectl logs backend`, `kubectl describe pod backend`, `kubectl edit deployment api-service`.
-- AWS: `aws eks list-clusters`, `aws eks describe-nodegroup smite-cluster workers`, `aws eks update-nodegroup-config smite-cluster workers 3`.
-- **Chaining**: `cd /etc && ls` → Silent cd, then list.
 
-Example Session:
+#### Engine
+
 ```bash
-$ ls
-notes (rw-r--r--)
-
-$ cat notes
-Hint: cd /etc && chmod rw-r--r-- config to fix
-
-$ cd /etc && ls
-config (r--r--r--)
-
-$ chmod rw-r--r-- config && kubectl get pods
-Permissions updated for config
-NAME		READY	    STATUS		RESTARTS
-backend	    0/1	        Running	    0
-
-$ quests kubernetes 0
-Activated quest 0 for kubernetes. Re-run app to check progress.
-
-$ quit
-Journey ends. Farewell, Apprentice.
+help → show available modules and commands
+modules → list loaded modules
+quests → list available quests
+quests k8s 0 → activate quest 0 for Kubernetes
+quit → exit
 ```
 
-Re-run to check quest progress (e.g., "The Crashing Pod: Complete" after edit).
+#### Linux Module
+
+```
+ls, cd, cat, chmod, touch, nano
+```
+
+#### Kubernetes Module
+
+```bash
+kubectl get pods
+kubectl get pods -o wide
+kubectl describe pod <name>
+kubectl get events
+kubectl get nodes
+kubectl describe node <name>
+kubectl logs <pod>
+```
+
+#### AWS Module
+
+```bash
+aws eks list-clusters
+aws eks describe-nodegroup <cluster> <nodegroup>
+aws eks update-nodegroup-config <cluster> <nodegroup> <count>
+```
+
+---
+
+### Example Session
+
+```bash
+⚡  Welcome, Apprentice. Your journey begins.
+
+$ kubectl get pods -o wide
+NAME       READY  STATUS            RESTARTS  NODE     IP          IMAGE
+backend    0/1    CrashLoopBackOff  5         node-1   10.244.0.5  my-backend-image:v1
+frontend   1/1    Running           0         node-2   10.244.0.6  nginx:latest
+
+$ kubectl get events
+LAST SEEN            TYPE     REASON    OBJECT    MESSAGE
+2025-10-24T14:00:01  Warning  Failed    backend   Failed to pull secret 'db-secret'
+2025-10-24T14:01:01  Normal   Pulling   backend   Pulling image "my-backend-image:v1"
+2025-10-24T14:01:30  Warning  BackOff   backend   Back-off restarting failed container
+
+$ kubectl describe pod backend
+Name:         backend
+Node:         node-1
+Status:       CrashLoopBackOff
+Restarts:     5
+Image:        my-backend-image:v1
+Last State:
+  Reason:     Error
+  Exit Code:  1
+  Started:    2025-10-24T14:00:00
+  Finished:   2025-10-24T14:00:01
+
+Events:
+  Warning  Failed  Failed to pull secret 'db-secret'
+  Normal   Pulling Pulling image "my-backend-image:v1"
+  Warning  BackOff Back-off restarting failed container
+```
+
+---
 
 ## Modules
-- **Linux** (Always Loaded): Basic shell (cd, ls, cat, chmod). Emulates FS with perms—quests for perms fixes.
-- **Kubernetes**: `kubectl` cmds for pods/logs/describe/edit. Emulates cluster with crashing backend pod.
-- **AWS**: AWS CLI for EKS (`aws eks list-clusters`, `describe-nodegroup`, `update-nodegroup-config`). Emulates under-scaled nodegroup.
 
-Add new: Drop `./modules/newmodule/module.cpp` + YAMLs, add factory to main.cpp—plug-and-play.
+| --- | --- |
+
+| Module | Description |
+
+| Linux | File and permission management simulator. |
+| Kubernetes | Cluster-aware emulation of nodes, pods, and events. |
+| AWS | Simulates EKS clusters and nodegroup scaling. |
+
+Each module registers its own command namespace (`kubectl`, `aws`, etc.) and state file. Add new ones via `src/modules/<name>/`.
+
+---
 
 ## Quests
-Opt-in challenges (via `quests <module> <id>`):
-- **Kubernetes**: "The Crashing Pod" — Fix backend outage (edit deployment, eval status).
-- **AWS**: "Scale the Node Group" — Increase workers (update-nodegroup, eval size).
-- **Linux**: "Fix Config Permissions" — Chmod /etc/config, eval perms.
 
-Progress evals on re-run (or post-command hook if extended). Add to quests.yaml, activate via REPL.
+Activate via `quests <module> <id>`:
+
+-   *Kubernetes* – “The Crashing Pod”: Fix a backend in CrashLoopBackOff.
+-   *AWS* – “Scale the Node Group”: Increase node count to resolve load issues.
+-   *Linux* – “Fix Config Permissions”: Correct `/etc/config` file permissions.
+    
+---
 
 ## Building
-- **Makefile**: Clang++ with static linking (`-static`), yaml-cpp, fmt, stdc++fs.
-- **Dependencies** (MSYS2): `pacman -S mingw-w64-x86_64-clang mingw-w64-x86_64-yaml-cpp mingw-w64-x86_64-fmt mingw-w64-x86_64-toolchain`.
-- **Custom**: Add `-DDEBUG` to CXXFLAGS for checkpoints.
 
-Cross-platform: Makefile works on Linux/macOS (adjust paths).
+-   Uses static linking.
+-   Supports MSYS2, Linux, and macOS (adjust paths).
+-   Debugging:
+    
+    ```
+    make clean && make DEBUG=1
+    ```
+
+---
 
 ## Contributing
-- Fork, branch, PR.
-- Code: C++17, RAII, smart pointers—no leaks.
-- Tests: Add to `test/` (none yet; focus REPL).
-- Issues: YAML formats, new modules, full bash (`;`, `|`).
+
+-   PRs welcome - focus on gameplay feel and extensibility.
+-   Code style: modern C++17, RAII, smart pointers.
+-   Scenarios: add YAMLs under `/modules/<name>/`; module state `state.yaml` and quests in `quests.yaml`.
+    
+---
 
 ## License
-MIT—use, modify, smite responsibly.
+
+MIT - use, modify, and smite responsibly.
 
 ---
 
