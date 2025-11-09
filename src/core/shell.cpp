@@ -167,6 +167,14 @@ void Shell::register_builtin_commands() {
     register_command("nano", [this](const auto& args) -> string {
         if (args.empty()) return "nano: No file provided\n";
 
+        if (args[0] == "-V" || args[0] == "--version") {
+            return "GNU nano version 2.0 (simulated)\n";
+        }
+
+        if (args[0] == "--help") {
+            return "Usage: nano <FILE>\n";
+        }
+
         std::string file_path = resolve_path(args[0]);
         auto [dir, filename] = get_dir_and_file(file_path);
 
@@ -181,7 +189,7 @@ void Shell::register_builtin_commands() {
             file_ptr->content = new_content;  // update virtual file
         });
 
-        return "File closed.\n";
+        return "\n";
     });
 
 
