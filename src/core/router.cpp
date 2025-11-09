@@ -5,6 +5,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <cstdlib> // for strdup
+#include <fmt/core.h>
 
 // needed for readline completion
 static Router* g_router_for_completion = nullptr;
@@ -50,7 +51,7 @@ std::string Router::handle_input(const std::string& raw) {
         --try_len;
     }
 
-    return ""; // No module handled it
+    return fmt::format("-bash: {}: command not found\n", tokens[0]);
 }
 
 std::vector<std::string> Router::list_commands() const {
