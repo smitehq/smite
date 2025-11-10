@@ -27,6 +27,12 @@ public:
     // Execute a command; returns textual output (engine prints it). args contains the tokens after the matched prefix.
     virtual std::string run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) = 0;
 
+    // Additional module-specific methods can be added here
+    virtual std::string list_quests() const { return "No quests available for this module.\n"; }
+
+    // Activate a quest by ID; returns true if successful
+    virtual bool activate_quest(const std::string& quest_id) { return false; }
+
     // Evaluate a quest condition. The engine will provide the condition YAML (module-specific schema).
     // Return true if condition satisfied by current module state.
     virtual bool evaluate_condition(const YAML::Node& conditionSpec) = 0;

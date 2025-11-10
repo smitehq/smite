@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <functional>
 #include <memory>
 #include <sstream>
@@ -69,12 +70,13 @@ public:
     std::string run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) override;
     bool evaluate_condition(const YAML::Node& conditionSpec) override;
     std::vector<std::string> registered_prefixes() const override;
+    bool activate_quest(const std::string& quest_id) override;
 
 private:
     std::string path;
     std::vector<Pod> pods;
     std::vector<Node> nodes;
-    YAML::Node quests; // raw quests
+    YAML::Node default_state_yaml;
 
     //--------------------------------------
     // Command registry
@@ -84,6 +86,12 @@ private:
 
     void register_builtin_commands();
     void register_command(const std::string& name, CommandHandler handler);
+
+    //--------------------------------------
+    // State Loading
+    //--------------------------------------
+    void load_cluster_state(const YAML::Node& node);
+
 
     //--------------------------------------
     // Helper

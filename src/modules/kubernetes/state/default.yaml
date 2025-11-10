@@ -1,0 +1,22 @@
+cluster:
+  name: cluster-1
+  nodes:
+    - name: node-1
+      ip: 10.244.0.5
+      pods:
+        - name: backend
+          status: Running
+          restarts: 0
+          image: my-backend-image:v1
+          container_state: running
+          logs: []
+          events: []
+    - name: node-2
+      ip: 10.244.0.6
+      pods:
+        - name: frontend
+          status: Running
+          restarts: 0
+          image: nginx:latest
+          logs: []
+          events: []

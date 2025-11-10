@@ -9,6 +9,7 @@
 #include <functional>
 #include "module_interface.h"
 #include "router.h"
+#include "quest.h"
 
 class Engine {
 public:
@@ -25,8 +26,6 @@ public:
     // Command dispatch
     std::string dispatch_command(const std::string& cmd);
 
-    // Quest management
-    void handle_quests(const std::vector<std::string>& tokens);
 
     // Engine command registration
     void register_command(const std::string& prefix, std::function<std::string(const std::vector<std::string>&)> handler);
@@ -37,12 +36,10 @@ public:
 private:
     std::string modules_dir;
     Router router;
-    std::unordered_map<std::string, std::unordered_set<int>> active_quests;
+    QuestManager quests;
 
     // Cached engine commands
     std::unordered_map<std::string, std::function<std::string(const std::vector<std::string>&)>> engine_commands;
-
-    std::string list_quests_for_module(const std::string& mod_name) const;
 
     // Helpers
     static std::string trim(const std::string& str);

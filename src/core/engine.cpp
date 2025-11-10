@@ -8,16 +8,20 @@
 #include <sstream>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include "quest.h"
 
 namespace fs = std::filesystem;
 
 // --------------------------
 // Engine Constructor
 // --------------------------
-Engine::Engine(const std::string& modulesDir) : modules_dir(modulesDir), router(), active_quests() {
+Engine::Engine(const std::string& modulesDir) : modules_dir(modulesDir), router(), quests(modulesDir) {
+    quests.load_all_quests();
+
     // Register default engine commands
     register_command("quit", [](const auto&) -> std::string { throw std::runtime_error("quit"); });
     register_command("exit", [](const auto&) -> std::string { throw std::runtime_error("quit"); });
+
     register_command("help", [this](const auto&) -> std::string {
         std::ostringstream oss;
         oss << "Registered command prefixes:\n";
@@ -25,6 +29,7 @@ Engine::Engine(const std::string& modulesDir) : modules_dir(modulesDir), router(
         oss << "Other engine commands: modules, quests, quit\n";
         return oss.str();
     });
+
     register_command("modules", [this](const auto&) -> std::string {
         std::ostringstream oss;
         oss << "Modules loaded:\n";
@@ -33,27 +38,33 @@ Engine::Engine(const std::string& modulesDir) : modules_dir(modulesDir), router(
         }
         return oss.str();
     });
-    register_command("quests", [this](const auto& t) -> std::string {
-        std::ostringstream oss;
-        if (t.size() < 2) {
-            oss << "Available quests by module:\n";
+
+    register_command("quests", [this](const auto& args) -> std::string {
+        if (args.size() < 2) {
+            std::ostringstream oss;
             for (const auto& mod : router.get_modules()) {
-                oss << mod->name() << ":\n";
-                oss << list_quests_for_module(mod->name());
+                if (quests.get_quests_for_module(mod->name()).empty()) continue;
+                oss << mod->name() << ":\n" << quests.list_quests(mod->name());
             }
-        } else {
-            auto mod_name = t[1];
-            if (t.size() < 3) {
-                oss << list_quests_for_module(mod_name);
-            } else {
-                int quest_id;
-                try { quest_id = std::stoi(t[2]); } 
-                catch (...) { return "Invalid quest ID; must be integer.\n"; }
-                active_quests[mod_name].insert(quest_id);
-                oss << "Activated quest " << quest_id << " for " << mod_name << ". Re-run app to check progress.\n";
-            }
+            return oss.str();
         }
-        return oss.str();
+
+        const auto& mod = args[1];
+        if (args.size() == 2) return quests.list_quests(mod);
+        
+        const auto& quest_id = args[2];
+        if (!quests.activate_quest(mod, quest_id)) return "Quest not found.\n";
+
+        auto mod_ptr = router.get_module_by_name(mod);
+        if (!mod_ptr) {
+            std::cout << "Module not found: " << mod << "\n";
+            return "\n";
+        }
+        mod_ptr->activate_quest(quest_id);
+
+
+        //router.get_module_by_name(mod)->activate_quest(quest_id);
+        return fmt::format("Activated quest {} for {}.\n", quest_id, mod);
     });
 }
 
@@ -188,58 +199,6 @@ std::string Engine::get_prompt() {
     std::string dir = shell ? shell->get_current_dir() : "~";
     if (dir == shell->get_home()) dir = "~";
     return fmt::format("\x1b[1;32m{}@{}\x1b[0m:\x1b[34m{}\x1b[0m$ ", user, host, dir);
-}
-
-// --------------------------
-// Quests
-// --------------------------
-std::string Engine::list_quests_for_module(const std::string& mod_name) const {
-    std::ostringstream oss;
-    std::string mod_path = modules_dir + "/" + mod_name;
-    std::string quests_file = (fs::path(mod_path) / "quests.yaml").string();
-    if (!fs::exists(quests_file)) {
-        oss << "No quests.yaml for module '" << mod_name << "'.\n";
-        return oss.str();
-    }
-    YAML::Node quests_yaml = YAML::LoadFile(quests_file);
-    if (!quests_yaml["quests"]) return "No quests defined for " + mod_name + ".\n";
-
-    oss << mod_name << " quests:\n";
-    int id = 0;
-    for (const auto& q : quests_yaml["quests"]) {
-        bool active = active_quests.count(mod_name) > 0 && active_quests.at(mod_name).count(id) > 0;
-        oss << "  " << id << ": " << q["title"].as<std::string>() << " [" 
-            << (active ? "ACTIVE" : "INACTIVE") << "]\n";
-        ++id;
-    }
-    return oss.str();
-}
-
-// --------------------------
-// Handle quests command
-// --------------------------
-void Engine::handle_quests(const std::vector<std::string>& tokens) {
-    if (tokens.size() < 2) {
-        cout_flush("Available quests by module:\n");
-        for (auto& mod : router.get_modules()) {
-            cout_flush(mod->name() + ":\n");
-            cout_flush(list_quests_for_module(mod->name()));
-        }
-        cout_flush("\nUsage: quests <module> [id] to list/activate\n");
-        return;
-    }
-    std::string mod_name = tokens[1];
-    if (tokens.size() < 3) {
-        cout_flush(list_quests_for_module(mod_name));
-        return;
-    }
-    try {
-        int quest_id = std::stoi(tokens[2]);
-        active_quests[mod_name].insert(quest_id);
-        cout_flush("Activated quest " + std::to_string(quest_id) + " for " + mod_name + ". Re-run app to check progress.\n");
-    } catch (...) {
-        cout_flush("Invalid quest ID; must be integer.\n");
-    }
 }
 
 // expose means for module cross talk

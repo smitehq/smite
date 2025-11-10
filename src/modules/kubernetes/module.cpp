@@ -9,95 +9,125 @@ namespace fs = std::filesystem;
 std::string KubernetesModule::name() const { return "kubernetes"; }
 
 bool KubernetesModule::load_from_path(const std::string& modulePath) {
-    path = modulePath;
-    bool all_good = true;
+    path = modulePath;    
+    // ----------------------
+    // Load Default State
+    // ----------------------
+    std::string default_state_file = (fs::path(modulePath) / "state" / "default.yaml").string();
+    if (!fs::exists(default_state_file)) return false;
 
-    struct FileConfig {
-        std::string filename;
-        bool optional;
-        std::function<void(const YAML::Node&)> handler;
-    };
-
-    std::vector<FileConfig> configs = {
-        {"state.yaml", false, [this](const YAML::Node& node) {
-            if (node["cluster"] && node["cluster"]["nodes"]) {
-                for (auto n : node["cluster"]["nodes"]) {
-                    Node node_struct;
-                    if (n["name"]) node_struct.name = n["name"].as<std::string>();
-                    if (n["ip"]) node_struct.ip = n["ip"].as<std::string>();
-                    
-                    if (n["pods"]) {
-                        for (auto p : n["pods"]) {
-                            Pod pod;
-                            if (p["name"]) pod.name = p["name"].as<std::string>();
-                            if (p["status"]) pod.status = p["status"].as<std::string>();
-                            if (p["restarts"]) pod.restarts = p["restarts"].as<int>();
-                            if (p["image"]) pod.image = p["image"].as<std::string>();
-                            if (p["container_state"]) pod.container_state = p["container_state"].as<std::string>();
-
-                            if (p["last_state"]) {
-                                const auto& ls = p["last_state"];
-                                if (ls["reason"]) pod.last_state.reason = ls["reason"].as<std::string>();
-                                if (ls["exit_code"]) pod.last_state.exit_code = ls["exit_code"].as<int>();
-                                if (ls["started"]) pod.last_state.started = ls["started"].as<std::string>();
-                                if (ls["finished"]) pod.last_state.finished = ls["finished"].as<std::string>();
-                            }
-
-                            if (p["events"]) {
-                                for (auto e : p["events"]) {
-                                    PodEvent evt;
-                                    if (e["type"]) evt.type = e["type"].as<std::string>();
-                                    if (e["reason"]) evt.reason = e["reason"].as<std::string>();
-                                    if (e["message"]) evt.message = e["message"].as<std::string>();
-                                    if (e["timestamp"]) evt.timestamp = e["timestamp"].as<std::string>();
-                                    pod.events.push_back(evt);
-                                }
-                            }
-
-                            if (p["logs"]) {
-                                for (auto l : p["logs"]) {
-                                    PodLog log;
-                                    if (l["timestamp"]) log.timestamp = l["timestamp"].as<std::string>();
-                                    if (l["message"])   log.message   = l["message"].as<std::string>();
-                                    pod.logs.push_back(log);
-                                }
-                            }
-
-                            node_struct.pods.push_back(pod);
-                        }
-                    }
-
-                    nodes.push_back(node_struct); // <-- top-level vector now
-                }
-            }
-
-        }},
-        {"quests.yaml", true, [this](const YAML::Node& node) {
-            quests = node;
-            // std::cout << "Loaded quests.yaml with " << quests.size() << " top-level keys\n";
-        }}
-    };
-
-    for (const auto& config : configs) {
-        std::string file_path = (fs::path(modulePath) / config.filename).string();
-        if (!fs::exists(file_path)) {
-            std::cout << "Warning: " << config.filename << " missing at " << file_path << "\n";
-            if (!config.optional) all_good = false;
-            continue;
-        }
-        try {
-            YAML::Node node = YAML::LoadFile(file_path);
-            config.handler(node);
-        } catch (const std::exception& ex) {
-            std::cout << config.filename << " error: " << ex.what() << "\n";
-            if (!config.optional) all_good = false;
-        }
+    try {
+        YAML::Node default_state = YAML::LoadFile(default_state_file);
+        load_cluster_state(default_state);  // Extract cluster/nodes/pods
+    } catch (const std::exception& ex) {
+        std::cout << "default.yaml error: " << ex.what() << "\n";
+        return false;
     }
 
-    register_builtin_commands();
+    // // ----------------------
+    // // Scan Quests Folder
+    // // ----------------------
+    // fs::path quests_dir = fs::path(modulePath) / "quests";
+    // if (!fs::exists(quests_dir) || !fs::is_directory(quests_dir)) return false;
 
-    // std::cout << "Module load complete (all good: " << (all_good ? "true" : "false") << ")\n";
-    return all_good;
+    // for (auto& file : fs::directory_iterator(quests_dir)) {
+    //     if (file.path().extension() != ".yaml") continue;
+    //     try {
+    //         YAML::Node quest_yaml = YAML::LoadFile(file.path().string());
+    //         if (!quest_yaml["id"]) continue;
+    //         std::string quest_id = quest_yaml["id"].as<std::string>();
+    //         quest_map[quest_id] = quest_yaml;
+    //     } catch (const std::exception& e) {
+    //         std::cout << "Failed to load quest " << file.path() << ": " << e.what() << "\n";
+    //         return false;
+    //     }
+    // }
+
+    register_builtin_commands();
+    return true;
+}
+
+// ----------------------
+// Load Cluster State Helper
+// ----------------------
+void KubernetesModule::load_cluster_state(const YAML::Node& node) {
+    nodes.clear();
+    if (!node["cluster"] || !node["cluster"]["nodes"]) return;
+
+    for (auto n : node["cluster"]["nodes"]) {
+        Node node_struct;
+        if (n["name"]) node_struct.name = n["name"].as<std::string>();
+        if (n["ip"]) node_struct.ip = n["ip"].as<std::string>();
+
+        if (n["pods"]) {
+            for (auto p : n["pods"]) {
+                Pod pod;
+                if (p["name"]) pod.name = p["name"].as<std::string>();
+                if (p["status"]) pod.status = p["status"].as<std::string>();
+                if (p["restarts"]) pod.restarts = p["restarts"].as<int>();
+                if (p["image"]) pod.image = p["image"].as<std::string>();
+                if (p["container_state"]) pod.container_state = p["container_state"].as<std::string>();
+
+                if (p["last_state"]) {
+                    const auto& ls = p["last_state"];
+                    if (ls["reason"]) pod.last_state.reason = ls["reason"].as<std::string>();
+                    if (ls["exit_code"]) pod.last_state.exit_code = ls["exit_code"].as<int>();
+                    if (ls["started"]) pod.last_state.started = ls["started"].as<std::string>();
+                    if (ls["finished"]) pod.last_state.finished = ls["finished"].as<std::string>();
+                }
+
+                if (p["events"]) {
+                    for (auto e : p["events"]) {
+                        PodEvent evt;
+                        if (e["type"]) evt.type = e["type"].as<std::string>();
+                        if (e["reason"]) evt.reason = e["reason"].as<std::string>();
+                        if (e["message"]) evt.message = e["message"].as<std::string>();
+                        if (e["timestamp"]) evt.timestamp = e["timestamp"].as<std::string>();
+                        pod.events.push_back(evt);
+                    }
+                }
+
+                if (p["logs"]) {
+                    for (auto l : p["logs"]) {
+                        PodLog log;
+                        if (l["timestamp"]) log.timestamp = l["timestamp"].as<std::string>();
+                        if (l["message"]) log.message = l["message"].as<std::string>();
+                        pod.logs.push_back(log);
+                    }
+                }
+
+                node_struct.pods.push_back(pod);
+            }
+        }
+
+        nodes.push_back(node_struct);
+    }
+}
+
+// ----------------------
+// Activate Quest
+// ----------------------
+bool KubernetesModule::activate_quest(const std::string& quest_id) {
+    //if (quest_map.count(quest_id) == 0) return false;
+
+    // Try quest-specific state file first
+    fs::path quest_state_path = fs::path(path) / "state" / (quest_id + ".yaml");
+    if (fs::exists(quest_state_path)) {
+        try {
+            YAML::Node quest_state = YAML::LoadFile(quest_state_path.string());
+            load_cluster_state(quest_state);
+            std::cout << "Loaded quest-specific state for " << quest_id << "\n";
+        } catch (const std::exception& e) {
+            std::cout << "Failed to load quest state: " << e.what() << "\n";
+            return false;
+        }
+    } else {
+        // Fallback: reset to default state
+        std::cout << "No quest-specific state found, using default.\n";
+        load_cluster_state(default_state_yaml);
+    }
+
+    return true;
 }
 
 void KubernetesModule::register_command(const std::string& name, CommandHandler handler) {
