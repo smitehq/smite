@@ -68,6 +68,13 @@ std::vector<std::shared_ptr<SmiteModule>> Router::get_modules() const {
     return modules; 
 }
 
+std::shared_ptr<SmiteModule> Router::get_module_by_name(const std::string& name) const {
+    for (const auto& mod : modules) {
+        if (mod->name() == name) return mod;
+    }
+    return nullptr;
+}
+
 std::vector<std::string> Router::complete_command(const std::vector<std::string>& tokens, size_t token_index, const std::string& current_token) const {
     std::vector<std::string> results;
 

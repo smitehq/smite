@@ -1,0 +1,12 @@
+id: k8s_crashloop
+title: "The Crashing Pod"
+description: "Resolve the CrashLoopBackOff for the backend pod."
+condition:
+  type: pod_status
+  pod: backend
+  status: Running
+reward_xp: 100
+hints:
+  - "Check the pod's events to identify the root cause of the crash."
+  - "Investigate the logs for error messages related to database connectivity."
+  - "Ensure that the required secrets are correctly configured and accessible."

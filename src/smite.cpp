@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     std::cout << "smite.sh engine - type 'help' for commands, 'quit' to exit\n" << std::endl;
 
     // create router & engine and register modules
-    Engine engine("./modules"); // modules folder path (ignored for static proto)
+    Engine engine("./src/modules"); // modules folder path (ignored for static proto)
 
     auto shell = create_module_shell();  // Always first
     if (!shell->load_from_path("./src/core/shell")) {
