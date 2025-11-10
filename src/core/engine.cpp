@@ -115,7 +115,7 @@ std::string Engine::dispatch_command(const std::string& cmd) {
     }
 
     // Otherwise, route to modules
-    return router.handle_input(cmd);
+    return router.handle_command(tokens);
 }
 
 // --------------------------

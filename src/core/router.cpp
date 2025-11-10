@@ -1,4 +1,5 @@
 #include "router.h"
+#include "utils.h"
 #include <sstream>
 #include <algorithm>
 #include <iostream>
@@ -18,22 +19,13 @@ void Router::add_module(std::shared_ptr<SmiteModule> module) {
         prefix_map[prefix] = module;
 
         // Track longest prefix in tokens
-        size_t tok_count = tokenize(prefix).size();
+        size_t tok_count = Utils::tokenize_command(prefix).size();
         if (tok_count > max_prefix_tokens) max_prefix_tokens = tok_count;
     }
 }
 
-std::vector<std::string> Router::tokenize(const std::string& s) {
-    std::istringstream iss(s);
-    std::vector<std::string> t;
-    std::string tok;
-    while (iss >> tok) t.push_back(tok);
-    return t;
-}
-
 // Optimized longest-prefix matching using precomputed map
-std::string Router::handle_input(const std::string& raw) {
-    auto tokens = tokenize(raw);
+std::string Router::handle_command(const std::vector<std::string>& tokens) {
     if (tokens.empty()) return "";
 
     // Try longest possible prefixes first, down to 1 token
@@ -79,7 +71,7 @@ std::vector<std::string> Router::complete_command(const std::vector<std::string>
     std::vector<std::string> results;
 
     for (const auto& [prefix, module] : prefix_map) {
-        auto cmd_tokens = tokenize(prefix);
+        auto cmd_tokens = Utils::tokenize_command(prefix);
 
         // skip if typed tokens are longer than the command
         if (token_index >= cmd_tokens.size()) continue;

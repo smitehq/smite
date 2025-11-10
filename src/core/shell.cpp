@@ -378,7 +378,7 @@ char* universal_generator(const char* text, int state) {
 
         // Current line in readline
         std::string line(rl_line_buffer);
-        auto tokens = Router::tokenize(line);
+        auto tokens = Utils::tokenize_command(line);
         bool after_space = !line.empty() && isspace(line.back());
 
         // Determine token_index and current_token
