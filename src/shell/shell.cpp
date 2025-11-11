@@ -70,24 +70,18 @@ void Shell::build_base_state() {
 // Command Registration
 // ============================================
 
-void Shell::register_command(const std::string& name, CommandHandler handler) {
-    if (name.empty()) {
-        std::cerr << "Warning: Attempted to register command with empty name\n";
-        return;
-    }
-    command_registry_[name] = std::move(handler);
-}
-
 void Shell::register_all_commands() {
-    // Register commands - just bind the function to 'this'
-    register_command("ls",    [](Shell* s, const auto& a) { return shell_commands::ls(s, a); });
-    register_command("cd",    [](Shell* s, const auto& a) { return shell_commands::cd(s, a); });
-    register_command("pwd",   [](Shell* s, const auto& a) { return shell_commands::pwd(s, a); });
-    register_command("cat",   [](Shell* s, const auto& a) { return shell_commands::cat(s, a); });
-    register_command("echo",  [](Shell* s, const auto& a) { return shell_commands::echo(s, a); });
-    register_command("touch", [](Shell* s, const auto& a) { return shell_commands::touch(s, a); });
-    register_command("chmod", [](Shell* s, const auto& a) { return shell_commands::chmod(s, a); });
-    register_command("nano",  [](Shell* s, const auto& a) { return shell_commands::nano(s, a); });
+    using namespace shell_commands;
+
+    // Template register_command automatically passes 'this' to command factories
+    register_command("ls",    cmd_ls);
+    register_command("cd",    cmd_cd);
+    register_command("pwd",   cmd_pwd);
+    register_command("cat",   cmd_cat);
+    register_command("echo",  cmd_echo);
+    register_command("touch", cmd_touch);
+    register_command("chmod", cmd_chmod);
+    register_command("nano",  cmd_nano);
 }
 
 // ============================================
@@ -161,9 +155,9 @@ std::string Shell::run_command(const std::string& cmdPrefix, const std::vector<s
     if (it == command_registry_.end()) {
         return "Command not found: " + cmdPrefix + "\n";
     }
-    
+
     try {
-        return it->second(this, args);  // Call handler with this pointer
+        return it->second(args);  // Lambda already captures context
     } catch (const std::exception& e) {
         return std::string("Error executing command: ") + e.what() + "\n";
     }

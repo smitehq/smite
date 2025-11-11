@@ -17,7 +17,7 @@ cluster:
           events:
             - type: Warning
               reason: Failed
-              message: Failed to pull secret 'db-secret'
+              message: "Error: secret 'db-secret' not found"
               timestamp: "2025-10-24T14:00:01"
             - type: Normal
               reason: Pulling
@@ -29,10 +29,12 @@ cluster:
               timestamp: "2025-10-24T14:01:30"
           logs:
             - timestamp: "2025-10-24T14:00:01"
-              message: "Error: cannot connect to database"
+              message: "Error: cannot connect to database - missing credentials"
             - timestamp: "2025-10-24T14:02:15"
-              message: "Retrying connection to database"
-  
+              message: "Retrying connection to database..."
+            - timestamp: "2025-10-24T14:04:30"
+              message: "Fatal: DATABASE_URL environment variable not configured"
+
     - name: node-2
       ip: 10.244.0.6
       pods:
@@ -40,6 +42,16 @@ cluster:
           status: Running
           restarts: 0
           image: nginx:latest
+          container_state: running
           logs:
             - timestamp: "2025-10-24T14:05:00"
               message: "Started nginx"
+          events: []
+
+  # Secrets in the cluster (db-secret is missing!)
+  secrets:
+    - name: frontend-secret
+      type: Opaque
+      age: "10d"
+      data:
+        api_key: "frontend-api-key-value"

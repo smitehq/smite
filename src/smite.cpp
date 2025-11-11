@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     }
     engine.add_module(shell);
 
-    auto linux = create_module_linux();  // Always first
+    auto linux = create_module_linux();
     if (!linux->load_from_path("./src/modules/linux")) {
         std::cerr << "Failed to load linux module\n";
         return 1;

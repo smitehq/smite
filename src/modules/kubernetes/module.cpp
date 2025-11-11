@@ -1,8 +1,26 @@
 #include "module.h"
+#include "shell/nano.h"
 #include <yaml-cpp/yaml.h>
 #include <filesystem>
 #include <iostream>
 #include <random>
+#include <sstream>
+#include <regex>
+
+// Include kubectl command implementations
+#include "commands/version.h"
+#include "commands/get_pods.h"
+#include "commands/logs.h"
+#include "commands/describe_pod.h"
+#include "commands/delete_pod.h"
+#include "commands/get_secrets.h"
+#include "commands/create_secret.h"
+#include "commands/get_nodes.h"
+#include "commands/describe_node.h"
+#include "commands/top_nodes.h"
+#include "commands/top_pods.h"
+#include "commands/get_events.h"
+#include "commands/edit_deployment.h"
 
 namespace fs = std::filesystem;
 
@@ -33,55 +51,76 @@ bool KubernetesModule::load_from_path(const std::string& modulePath) {
 // ----------------------
 void KubernetesModule::load_cluster_state(const YAML::Node& node) {
     nodes.clear();
-    if (!node["cluster"] || !node["cluster"]["nodes"]) return;
+    secrets.clear();
 
-    for (auto n : node["cluster"]["nodes"]) {
-        Node node_struct;
-        if (n["name"]) node_struct.name = n["name"].as<std::string>();
-        if (n["ip"]) node_struct.ip = n["ip"].as<std::string>();
+    if (!node["cluster"]) return;
 
-        if (n["pods"]) {
-            for (auto p : n["pods"]) {
-                Pod pod;
-                if (p["name"]) pod.name = p["name"].as<std::string>();
-                if (p["status"]) pod.status = p["status"].as<std::string>();
-                if (p["restarts"]) pod.restarts = p["restarts"].as<int>();
-                if (p["image"]) pod.image = p["image"].as<std::string>();
-                if (p["container_state"]) pod.container_state = p["container_state"].as<std::string>();
+    // Load nodes and pods
+    if (node["cluster"]["nodes"]) {
+        for (auto n : node["cluster"]["nodes"]) {
+            Node node_struct;
+            if (n["name"]) node_struct.name = n["name"].as<std::string>();
+            if (n["ip"]) node_struct.ip = n["ip"].as<std::string>();
 
-                if (p["last_state"]) {
-                    const auto& ls = p["last_state"];
-                    if (ls["reason"]) pod.last_state.reason = ls["reason"].as<std::string>();
-                    if (ls["exit_code"]) pod.last_state.exit_code = ls["exit_code"].as<int>();
-                    if (ls["started"]) pod.last_state.started = ls["started"].as<std::string>();
-                    if (ls["finished"]) pod.last_state.finished = ls["finished"].as<std::string>();
-                }
+            if (n["pods"]) {
+                for (auto p : n["pods"]) {
+                    Pod pod;
+                    if (p["name"]) pod.name = p["name"].as<std::string>();
+                    if (p["status"]) pod.status = p["status"].as<std::string>();
+                    if (p["restarts"]) pod.restarts = p["restarts"].as<int>();
+                    if (p["image"]) pod.image = p["image"].as<std::string>();
+                    if (p["container_state"]) pod.container_state = p["container_state"].as<std::string>();
 
-                if (p["events"]) {
-                    for (auto e : p["events"]) {
-                        PodEvent evt;
-                        if (e["type"]) evt.type = e["type"].as<std::string>();
-                        if (e["reason"]) evt.reason = e["reason"].as<std::string>();
-                        if (e["message"]) evt.message = e["message"].as<std::string>();
-                        if (e["timestamp"]) evt.timestamp = e["timestamp"].as<std::string>();
-                        pod.events.push_back(evt);
+                    if (p["last_state"]) {
+                        const auto& ls = p["last_state"];
+                        if (ls["reason"]) pod.last_state.reason = ls["reason"].as<std::string>();
+                        if (ls["exit_code"]) pod.last_state.exit_code = ls["exit_code"].as<int>();
+                        if (ls["started"]) pod.last_state.started = ls["started"].as<std::string>();
+                        if (ls["finished"]) pod.last_state.finished = ls["finished"].as<std::string>();
                     }
-                }
 
-                if (p["logs"]) {
-                    for (auto l : p["logs"]) {
-                        PodLog log;
-                        if (l["timestamp"]) log.timestamp = l["timestamp"].as<std::string>();
-                        if (l["message"]) log.message = l["message"].as<std::string>();
-                        pod.logs.push_back(log);
+                    if (p["events"]) {
+                        for (auto e : p["events"]) {
+                            PodEvent evt;
+                            if (e["type"]) evt.type = e["type"].as<std::string>();
+                            if (e["reason"]) evt.reason = e["reason"].as<std::string>();
+                            if (e["message"]) evt.message = e["message"].as<std::string>();
+                            if (e["timestamp"]) evt.timestamp = e["timestamp"].as<std::string>();
+                            pod.events.push_back(evt);
+                        }
                     }
-                }
 
-                node_struct.pods.push_back(pod);
+                    if (p["logs"]) {
+                        for (auto l : p["logs"]) {
+                            PodLog log;
+                            if (l["timestamp"]) log.timestamp = l["timestamp"].as<std::string>();
+                            if (l["message"]) log.message = l["message"].as<std::string>();
+                            pod.logs.push_back(log);
+                        }
+                    }
+
+                    node_struct.pods.push_back(pod);
+                }
             }
-        }
 
-        nodes.push_back(node_struct);
+            nodes.push_back(node_struct);
+        }
+    }
+
+    // Load secrets
+    if (node["cluster"]["secrets"]) {
+        for (auto s : node["cluster"]["secrets"]) {
+            Secret secret;
+            if (s["name"]) secret.name = s["name"].as<std::string>();
+            if (s["type"]) secret.type = s["type"].as<std::string>();
+            if (s["age"]) secret.age = s["age"].as<std::string>();
+            if (s["data"]) {
+                for (auto kv : s["data"]) {
+                    secret.data[kv.first.as<std::string>()] = kv.second.as<std::string>();
+                }
+            }
+            secrets.push_back(secret);
+        }
     }
 }
 
@@ -89,9 +128,22 @@ void KubernetesModule::load_cluster_state(const YAML::Node& node) {
 // Activate Quest
 // ----------------------
 bool KubernetesModule::activate_quest(const std::string& quest_id) {
-    //if (quest_map.count(quest_id) == 0) return false;
+    // Load quest definition
+    fs::path quest_def_path = fs::path(path) / "quests" / (quest_id + ".yaml");
+    if (fs::exists(quest_def_path)) {
+        try {
+            YAML::Node quest = YAML::LoadFile(quest_def_path.string());
+            quest_data[quest_id] = quest;
+        } catch (const std::exception& e) {
+            std::cout << "Failed to load quest definition: " << e.what() << "\n";
+            return false;
+        }
+    } else {
+        std::cout << "Quest definition not found: " << quest_id << "\n";
+        return false;
+    }
 
-    // Try quest-specific state file first
+    // Load quest-specific state file
     fs::path quest_state_path = fs::path(path) / "state" / (quest_id + ".yaml");
     if (fs::exists(quest_state_path)) {
         try {
@@ -108,339 +160,33 @@ bool KubernetesModule::activate_quest(const std::string& quest_id) {
         load_cluster_state(default_state_yaml);
     }
 
+    active_quest_id = quest_id;
+    quest_completed = false;  // Reset completion flag
     return true;
 }
 
-void KubernetesModule::register_command(const std::string& name, CommandHandler handler) {
-    command_registry[name] = std::move(handler);
-}
-
 void KubernetesModule::register_builtin_commands() {
-    register_command("kubectl version", [this](const auto& args) -> std::string {
-        std::ostringstream out;
-        out << "Client Version: v1.28.0\n";
-        out << "Server Version: v1.28.0 (simulated)\n";
-        return out.str();
-    });
+    using namespace kubectl_commands;
 
-    register_command("kubectl get pods", [this](const auto& args) -> std::string {
-        bool wide = !args.empty() && (args[0] == "wide" || (args[0] == "-o" && args[1] == "wide"));
-        std::ostringstream out;
-
-        size_t name_width   = 4;
-        size_t ready_width  = 5;
-        size_t status_width = 6;
-        size_t rest_width   = 8;
-        size_t node_width   = 4;
-        size_t ip_width     = 2;
-        size_t image_width  = 5;
-
-        // Compute column widths
-        for (const auto& node : nodes) {
-            node_width = std::max(node_width, node.name.size());
-            for (const auto& p : node.pods) {
-                name_width   = std::max(name_width, p.name.size());
-                status_width = std::max(status_width, p.status.size());
-                rest_width   = std::max(rest_width, std::to_string(p.restarts).size());
-                ip_width     = std::max(ip_width, p.ip.empty() ? 10u : p.ip.size());
-                image_width  = std::max(image_width, p.image.empty() ? 16u : p.image.size());
-            }
-        }
-
-        // Header
-        out << std::left
-            << std::setw(name_width+2)   << "NAME"
-            << std::setw(ready_width+2)  << "READY"
-            << std::setw(status_width+2) << "STATUS"
-            << std::setw(rest_width+2)   << "RESTARTS";
-
-        if (wide) {
-            out << std::setw(node_width+2) << "NODE"
-                << std::setw(ip_width+2)   << "IP"
-                << std::setw(image_width+2)<< "IMAGE";
-        }
-
-        out << "\n";
-
-        // Rows
-        for (const auto& node : nodes) {
-            for (const auto& p : node.pods) {
-                out << std::left
-                    << std::setw(name_width+2)   << p.name
-                    << std::setw(ready_width+2)  << (p.status == "Running" ? "1/1" : "0/1")
-                    << std::setw(status_width+2) << p.status
-                    << std::setw(rest_width+2)   << p.restarts;
-
-                if (wide) {
-                    out << std::setw(node_width+2) << node.name
-                        << std::setw(ip_width+2)   << (p.ip.empty() ? "10.244.0.0" : p.ip)
-                        << std::setw(image_width+2)<< (p.image.empty() ? "placeholder:v1" : p.image);
-                }
-
-                out << "\n";
-            }
-        }
-
-        return out.str();
-    });
-
-    register_command("kubectl logs", [this](const auto& args) -> std::string {
-        if (args.empty()) return "Error: pod name required\n";
-
-        auto it = find_pod(args[0]);
-        if (it == decltype(nodes[0].pods.begin()){ }) {
-            std::ostringstream out;
-            out << "Error from server (NotFound): pod \"" << args[0] << "\" not found\n";
-            for (const auto& node : nodes) 
-                for (const auto& p : node.pods)
-                    if (p.name.rfind(args[0], 0) == 0)
-                        out << "Did you mean \"" << p.name << "\"?\n";
-            return out.str();
-        }
-
-        std::ostringstream out;
-        const Pod& pod = *it;
-        for (const auto& log : pod.logs) {
-            out << log.timestamp << " " << pod.name << ": " << log.message << "\n";
-        }
-        return out.str();
-    });
-
-    register_command("kubectl describe pod", [this](const auto& args) -> std::string {
-        if (args.empty()) return "Error: pod name required\n";
-
-        auto it = find_pod(args[0]);
-        if (it == pods.end()) {
-            std::ostringstream out;
-            out << "Error from server (NotFound): pod \"" << args[0] << "\" not found\n";
-            // fuzzy match suggestions
-            for (const auto& pp : pods) {
-                if (pp.name.rfind(args[0], 0) == 0) {
-                    out << "Did you mean \"" << pp.name << "\"?\n";
-                }
-            }
-                
-            return out.str();
-        }
-
-        const Pod& pod = *it;
-        std::ostringstream out;
-
-        // Basic info
-        out << "Name:       " << pod.name << "\n"
-            << "Namespace:  " << pod.ns << "\n"
-            << "Status:     " << pod.status << "\n"
-            << "Restarts:   " << pod.restarts << "\n"
-            << "IP:         " << (pod.ip.empty() ? "10.244.0.0" : pod.ip) << "\n"
-            << "Image:      " << (pod.image.empty() ? "placeholder-image:v1" : pod.image) << "\n"
-            << "Ready:      " << (pod.status == "Running" ? "True" : "False") << "\n";
-
-        // Container state
-        out << "Containers:\n"
-            << "  " << pod.name << "-container:\n"
-            << "    State: " << pod.container_state << "\n";
-
-        if (pod.container_state == "Terminated") {
-            out << "    Last State: Terminated\n"
-                << "      Reason: " << pod.last_state.reason << "\n"
-                << "      Exit Code: " << pod.last_state.exit_code << "\n"
-                << "      Started: " << pod.last_state.started << "\n"
-                << "      Finished: " << pod.last_state.finished << "\n";
-        }
-
-        // Events
-        out << "Events:\n";
-        for (const auto& e : pod.events) {
-            out << "  "
-                << std::left << std::setw(8) << e.type    // type column, width 8
-                << std::setw(10) << e.reason             // reason column, width 10
-                << std::setw(20) << e.timestamp          // timestamp, width 20
-                << "kubelet  "
-                << e.message << "\n";
-        }
-
-        return out.str();
-    });
-
-    register_command("kubectl edit deployment", [this](const auto&) -> std::string {
-        auto it = std::find_if(pods.begin(), pods.end(), [](const Pod& pp) { return pp.name == "backend"; });
-        std::ostringstream out;
-        if (it != pods.end()) {
-            it->status = "Running";
-            it->restarts = 0;
-            it->logs.push_back(PodLog{
-                "2025-11-08T13:00:00", // some timestamp
-                "Info: service connected to database successfully"
-            });
-            out << "Deployment updated successfully. Service restored!\n";
-        } else out << "No backend pod found to edit\n";
-        return out.str();
-    });
-
-    register_command("kubectl get events", [this](const auto& args) -> std::string {
-        bool wide = !args.empty() && (args[0] == "wide" || (args[0] == "-o" && args[1] == "wide"));
-
-        struct EventRow {
-            std::string timestamp;
-            std::string type;
-            std::string reason;
-            std::string object;
-            std::string node;
-            std::string message;
-        };
-
-        std::vector<EventRow> all_events;
-
-        // Gather all events
-        for (const auto& node : nodes) {
-            for (const auto& pod : node.pods) {
-                for (const auto& e : pod.events) {
-                    all_events.push_back({
-                        e.timestamp,
-                        e.type,
-                        e.reason,
-                        pod.name,
-                        node.name,
-                        e.message
-                    });
-                }
-            }
-        }
-
-        // Sort by timestamp descending
-        std::sort(all_events.begin(), all_events.end(), [](const EventRow& a, const EventRow& b) {
-            return a.timestamp > b.timestamp;
-        });
-
-        // Compute column widths dynamically
-        size_t ts_width     = 9;
-        size_t type_width   = 4;
-        size_t reason_width = 6;
-        size_t obj_width    = 6;
-        size_t node_width   = 4;
-        size_t msg_width    = 20; // declare here, in outer scope
-
-        for (const auto& e : all_events) {
-            ts_width     = std::max(ts_width, e.timestamp.size());
-            type_width   = std::max(type_width, e.type.size());
-            reason_width = std::max(reason_width, e.reason.size());
-            obj_width    = std::max(obj_width, e.object.size());
-            node_width   = std::max(node_width, e.node.size());
-            if (wide) msg_width = std::max(msg_width, e.message.size());
-        }
-
-        std::ostringstream out;
-
-        // Header
-        out << std::left
-            << std::setw(ts_width + 2) << "LAST SEEN"
-            << std::setw(type_width + 2) << "TYPE"
-            << std::setw(reason_width + 2) << "REASON"
-            << std::setw(obj_width + 2) << "OBJECT";
-
-        if (wide) out << std::setw(node_width + 2) << "NODE";
-
-        out << "MESSAGE\n";
-
-        // Rows
-        for (const auto& e : all_events) {
-            out << std::setw(ts_width + 2) << e.timestamp
-                << std::setw(type_width + 2) << e.type
-                << std::setw(reason_width + 2) << e.reason
-                << std::setw(obj_width + 2) << e.object;
-
-            if (wide) out << std::setw(node_width + 2) << e.node;
-
-            std::string msg = e.message;
-            if (!wide && msg.size() > msg_width) msg = msg.substr(0, msg_width - 3) + "...";
-
-            out << msg << "\n";
-        }
-
-        return out.str();
-    });
-
-    register_command("kubectl get nodes", [this](const auto&) -> std::string {
-        std::ostringstream out;
-        size_t name_width = 4, status_width = 7;
-
-        out << std::left << std::setw(10) << "NAME" << std::setw(12) << "STATUS" << "ROLES\n";
-        for (const auto& n : nodes) {
-            std::string status = "Ready"; // assume all nodes ready
-            std::string roles = "worker"; // default role
-            out << std::setw(10) << n.name << std::setw(12) << status << roles << "\n";
-        }
-        return out.str();
-    });
-
-    register_command("kubectl describe node", [this](const auto& args) -> std::string {
-        if (args.empty()) return "Error: node name required\n";
-        auto it = find_node(args[0]);
-        if (it == nodes.end()) return "Error from server (NotFound): node not found\n";
-
-        std::ostringstream out;
-        out << "Name: " << it->name << "\nIP: " << it->ip << "\n"
-            << "Pods:\n";
-
-        for (const auto& p : it->pods)
-            out << "  " << p.name << " (" << p.status << ")\n";
-
-        return out.str();
-    });
-
-    // kubectl top nodes
-    register_command("kubectl top nodes", [this](const auto& args) -> std::string {
-        std::ostringstream out;
-        size_t name_width = 4; // NAME column
-
-        for (const auto& n : nodes)
-            name_width = std::max(name_width, n.name.size());
-
-        out << std::left
-            << std::setw(name_width + 2) << "NAME"
-            << std::setw(8) << "CPU(%)"
-            << "MEM(%)\n";
-
-        for (const auto& n : nodes) {
-            int cpu = random_usage(80);  // simulate CPU usage 1-80%
-            int mem = random_usage(70);  // simulate Memory usage 1-70%
-            out << std::setw(name_width + 2) << n.name
-                << std::setw(8) << cpu
-                << mem << "\n";
-        }
-        return out.str();
-    });
-
-    // kubectl top pods
-    register_command("kubectl top pods", [this](const auto& args) -> std::string {
-        std::ostringstream out;
-        size_t name_width = 4;
-
-        for (const auto& node : nodes)
-            for (const auto& p : node.pods)
-                name_width = std::max(name_width, p.name.size());
-
-        out << std::left
-            << std::setw(name_width + 2) << "NAME"
-            << std::setw(8) << "CPU(%)"
-            << "MEM(%)\n";
-
-        for (const auto& node : nodes) {
-            for (const auto& p : node.pods) {
-                int cpu = random_usage(50);  // simulate pod CPU usage 1-50%
-                int mem = random_usage(50);  // simulate pod MEM usage 1-50%
-                out << std::setw(name_width + 2) << p.name
-                    << std::setw(8) << cpu
-                    << mem << "\n";
-            }
-        }
-        return out.str();
-    });
+    // Template register_command automatically passes 'this' to command factories
+    register_command("kubectl version", cmd_version);
+    register_command("kubectl get pods", cmd_get_pods);
+    register_command("kubectl logs", cmd_logs);
+    register_command("kubectl describe pod", cmd_describe_pod);
+    register_command("kubectl delete pod", cmd_delete_pod);
+    register_command("kubectl get secrets", cmd_get_secrets);
+    register_command("kubectl create secret generic", cmd_create_secret_generic);
+    register_command("kubectl get nodes", cmd_get_nodes);
+    register_command("kubectl describe node", cmd_describe_node);
+    register_command("kubectl top nodes", cmd_top_nodes);
+    register_command("kubectl top pods", cmd_top_pods);
+    register_command("kubectl get events", cmd_get_events);
+    register_command("kubectl edit deployment", cmd_edit_deployment);
 }
 
 auto KubernetesModule::find_pod(const std::string& pod_name) -> decltype(pods.begin()) {
     for (auto& node : nodes) {
-        auto it = std::find_if(node.pods.begin(), node.pods.end(), [&](const Pod& pp){ 
+        auto it = std::find_if(node.pods.begin(), node.pods.end(), [&](const Pod& pp){
             return pp.name == pod_name;
         });
         if (it != node.pods.end()) return it;
@@ -450,6 +196,48 @@ auto KubernetesModule::find_pod(const std::string& pod_name) -> decltype(pods.be
 
 auto KubernetesModule::find_node(const std::string& node_name) -> decltype(nodes.begin()) {
     return std::find_if(nodes.begin(), nodes.end(), [&](const Node& n){ return n.name == node_name; });
+}
+
+auto KubernetesModule::find_secret(const std::string& secret_name) -> std::vector<Secret>::iterator {
+    return std::find_if(secrets.begin(), secrets.end(), [&](const Secret& s){ return s.name == secret_name; });
+}
+
+auto KubernetesModule::pod_end() -> decltype(pods.end()) {
+    return decltype(nodes[0].pods.begin()){};  // Return sentinel for "not found"
+}
+
+auto KubernetesModule::secret_end() -> decltype(secrets.end()) {
+    return secrets.end();
+}
+
+// Check if creating a secret triggers any quest actions
+std::string KubernetesModule::check_secret_trigger(const std::string& secret_name) {
+    if (active_quest_id.empty() || quest_data.count(active_quest_id) == 0) {
+        return "";
+    }
+
+    const auto& quest = quest_data[active_quest_id];
+    if (!quest["triggers"]) {
+        return "";
+    }
+
+    for (const auto& trigger : quest["triggers"]) {
+        if (trigger["type"] && trigger["type"].as<std::string>() == "resource_created") {
+            std::string resource_type = trigger["resource"].as<std::string>();
+            std::string resource_name = trigger["name"].as<std::string>();
+
+            if (resource_type == "secret" && resource_name == secret_name) {
+                if (trigger["actions"]) {
+                    execute_actions(trigger["actions"]);
+
+                    // Check if quest is now complete
+                    return check_quest_completion();
+                }
+            }
+        }
+    }
+
+    return "";
 }
 
 bool KubernetesModule::supports_command(const std::string& cmdPrefix) const {
@@ -487,6 +275,195 @@ int KubernetesModule::random_usage(int max) {
     std::uniform_int_distribution<int> dist(1, max);
     return dist(rng);
 };
+
+// Get a nested field from YAML using dot notation (e.g., "spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name")
+YAML::Node KubernetesModule::get_yaml_field(const YAML::Node& node, const std::string& path) {
+    std::istringstream iss(path);
+    std::string token;
+    YAML::Node current = node;
+
+    while (std::getline(iss, token, '.')) {
+        if (token.empty()) continue;
+
+        // Handle array indexing like "containers[0]"
+        size_t bracket_pos = token.find('[');
+        if (bracket_pos != std::string::npos) {
+            std::string key = token.substr(0, bracket_pos);
+            size_t idx = std::stoi(token.substr(bracket_pos + 1, token.find(']') - bracket_pos - 1));
+
+            if (!current[key] || !current[key].IsSequence() || current[key].size() <= idx) {
+                return YAML::Node();  // Return undefined node
+            }
+            current = current[key][idx];
+        } else {
+            if (!current[token]) {
+                return YAML::Node();  // Return undefined node
+            }
+            current = current[token];
+        }
+    }
+
+    return current;
+}
+
+// Validate edited YAML against quest rules
+bool KubernetesModule::validate_edit(const std::string& original_yaml, const std::string& edited_yaml) {
+    if (!active_quest_id.empty() && quest_data.count(active_quest_id) > 0) {
+        const auto& quest = quest_data[active_quest_id];
+
+        if (!quest["edit_validations"]) {
+            std::cout << "deployment.apps/" << quest["deployment_template"]["pod"].as<std::string>() << " edited\n";
+            return true;  // No validations defined
+        }
+
+        try {
+            YAML::Node original = YAML::Load(original_yaml);
+            YAML::Node edited = YAML::Load(edited_yaml);
+
+            // Check each validation rule
+            for (const auto& validation : quest["edit_validations"]) {
+                std::string type = validation["type"].as<std::string>();
+
+                if (type == "yaml_field_changed") {
+                    std::string path_str = validation["path"].as<std::string>();
+                    std::string old_value = validation["old_value"].as<std::string>();
+
+                    YAML::Node original_field = get_yaml_field(original, path_str);
+                    YAML::Node edited_field = get_yaml_field(edited, path_str);
+
+                    if (!edited_field.IsDefined()) {
+                        if (validation["on_failure"]) {
+                            std::cout << validation["on_failure"]["feedback"].as<std::string>() << "\n";
+                        }
+                        return false;
+                    }
+
+                    std::string edited_value = edited_field.as<std::string>();
+
+                    // Check if value changed correctly
+                    if (validation["new_pattern"]) {
+                        std::string pattern = validation["new_pattern"].as<std::string>();
+                        std::regex regex_pattern(pattern);
+
+                        if (std::regex_match(edited_value, regex_pattern) && edited_value != old_value) {
+                            // Success! Execute actions
+                            if (validation["on_success"]) {
+                                execute_actions(validation["on_success"]["actions"]);
+                                if (validation["on_success"]["feedback"]) {
+                                    std::cout << validation["on_success"]["feedback"].as<std::string>() << "\n";
+                                }
+                            }
+                            return true;
+                        }
+                    }
+
+                    // Validation failed
+                    if (validation["on_failure"]) {
+                        std::cout << validation["on_failure"]["feedback"].as<std::string>() << "\n";
+                    }
+                    return false;
+                }
+            }
+
+        } catch (const YAML::Exception& e) {
+            std::cout << "Error parsing YAML: " << e.what() << "\n";
+            return false;
+        }
+    }
+
+    // No active quest, just report success
+    std::cout << "deployment edited\n";
+    return true;
+}
+
+// Execute actions defined in quest YAML
+void KubernetesModule::execute_actions(const YAML::Node& actions) {
+    if (!actions || !actions.IsSequence()) return;
+
+    for (const auto& action : actions) {
+        std::string type = action["type"].as<std::string>();
+
+        if (type == "modify_pod") {
+            std::string pod_name = action["pod"].as<std::string>();
+            auto it = find_pod(pod_name);
+
+            if (it != decltype(nodes[0].pods.begin()){}) {
+                const auto& changes = action["changes"];
+                if (changes["status"]) it->status = changes["status"].as<std::string>();
+                if (changes["restarts"]) it->restarts = changes["restarts"].as<int>();
+                if (changes["container_state"]) it->container_state = changes["container_state"].as<std::string>();
+            }
+        }
+        else if (type == "clear_events") {
+            std::string pod_name = action["pod"].as<std::string>();
+            auto it = find_pod(pod_name);
+            if (it != decltype(nodes[0].pods.begin()){}) {
+                it->events.clear();
+            }
+        }
+        else if (type == "clear_logs") {
+            std::string pod_name = action["pod"].as<std::string>();
+            auto it = find_pod(pod_name);
+            if (it != decltype(nodes[0].pods.begin()){}) {
+                it->logs.clear();
+            }
+        }
+        else if (type == "add_log") {
+            std::string pod_name = action["pod"].as<std::string>();
+            auto it = find_pod(pod_name);
+            if (it != decltype(nodes[0].pods.begin()){}) {
+                PodLog log;
+                log.timestamp = action["log"]["timestamp"].as<std::string>();
+                log.message = action["log"]["message"].as<std::string>();
+                it->logs.push_back(log);
+            }
+        }
+        else if (type == "add_event") {
+            std::string pod_name = action["pod"].as<std::string>();
+            auto it = find_pod(pod_name);
+            if (it != decltype(nodes[0].pods.begin()){}) {
+                PodEvent event;
+                event.type = action["event"]["type"].as<std::string>();
+                event.reason = action["event"]["reason"].as<std::string>();
+                event.message = action["event"]["message"].as<std::string>();
+                event.timestamp = action["event"]["timestamp"].as<std::string>();
+                it->events.push_back(event);
+            }
+        }
+    }
+}
+
+// Check if quest is complete and return completion message
+std::string KubernetesModule::check_quest_completion() {
+    if (active_quest_id.empty() || quest_completed) {
+        return "";  // No active quest or already completed
+    }
+
+    if (quest_data.count(active_quest_id) == 0) {
+        return "";  // Quest data not loaded
+    }
+
+    const auto& quest = quest_data[active_quest_id];
+
+    // Check if quest has a completion condition
+    if (!quest["condition"]) {
+        return "";
+    }
+
+    // Evaluate the completion condition
+    if (evaluate_condition(quest["condition"])) {
+        quest_completed = true;
+
+        // Return the completion message if it exists
+        if (quest["completion_message"]) {
+            return quest["completion_message"].as<std::string>();
+        }
+
+        return "Quest completed!";
+    }
+
+    return "";  // Quest not yet complete
+}
 
 // Factory
 std::shared_ptr<SmiteModule> create_module_kubernetes() {

@@ -11,7 +11,8 @@
 
 namespace shell_commands {
 
-inline std::string ls(Shell* shell, const std::vector<std::string>& args) {
+inline auto cmd_ls(Shell* shell) {
+    return [shell](const std::vector<std::string>& args) -> std::string {
         std::string target;
         bool long_format = false;
         std::string current_dir = shell->get_current_dir();
@@ -52,6 +53,7 @@ inline std::string ls(Shell* shell, const std::vector<std::string>& args) {
         }
 
         return out.str();
+    };
 }
 
 } // namespace shell_commands

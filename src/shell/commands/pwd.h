@@ -8,8 +8,10 @@
 
 namespace shell_commands {
 
-inline std::string pwd(Shell* shell, const std::vector<std::string>&) {
-    return shell->get_current_dir() + "\n";
+inline auto cmd_pwd(Shell* shell) {
+    return [shell](const std::vector<std::string>&) -> std::string {
+        return shell->get_current_dir() + "\n";
+    };
 }
 
 } // namespace shell_commands

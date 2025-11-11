@@ -8,7 +8,8 @@
 
 namespace shell_commands {
 
-inline std::string cd(Shell* shell, const std::vector<std::string>& args) {
+inline auto cmd_cd(Shell* shell) {
+    return [shell](const std::vector<std::string>& args) -> std::string {
     if (args.empty()) {
         shell->set_current_dir(shell->get_home());
         return "";
@@ -37,6 +38,7 @@ inline std::string cd(Shell* shell, const std::vector<std::string>& args) {
 
     shell->set_current_dir(resolved);
     return "";
+    };
 }
 
 } // namespace shell_commands

@@ -51,9 +51,18 @@ struct Node {
     std::vector<Pod> pods;
 };
 
+struct Secret {
+    std::string name;
+    std::string ns = "default";
+    std::string type = "Opaque";
+    std::unordered_map<std::string, std::string> data;  // key-value pairs
+    std::string age = "0s";  // How long the secret has existed
+};
+
 struct Cluster {
     std::string name;
     std::vector<Node> nodes;
+    std::vector<Secret> secrets;
 };
 
 class KubernetesModule : public SmiteModule {
@@ -71,12 +80,17 @@ public:
     bool evaluate_condition(const YAML::Node& conditionSpec) override;
     std::vector<std::string> registered_prefixes() const override;
     bool activate_quest(const std::string& quest_id) override;
+    std::string check_quest_completion();  // Check if active quest is complete and return completion message
 
 private:
     std::string path;
     std::vector<Pod> pods;
     std::vector<Node> nodes;
+    std::vector<Secret> secrets;
     YAML::Node default_state_yaml;
+    std::string active_quest_id;
+    std::unordered_map<std::string, YAML::Node> quest_data;  // quest_id -> quest YAML
+    bool quest_completed = false;  // Track if current quest has been completed
 
     //--------------------------------------
     // Command registry
@@ -85,19 +99,41 @@ private:
     std::unordered_map<std::string, CommandHandler> command_registry;
 
     void register_builtin_commands();
-    void register_command(const std::string& name, CommandHandler handler);
+
+    // Register command factory functions - automatically passes 'this' to factory
+    template<typename FactoryFunc>
+    void register_command(const std::string& name, FactoryFunc factory) {
+        command_registry[name] = factory(this);
+    }
 
     //--------------------------------------
     // State Loading
     //--------------------------------------
     void load_cluster_state(const YAML::Node& node);
 
+    //--------------------------------------
+    // Quest helpers
+    //--------------------------------------
+    YAML::Node get_yaml_field(const YAML::Node& node, const std::string& path);
+    bool validate_edit(const std::string& original_yaml, const std::string& edited_yaml);
+    void execute_actions(const YAML::Node& actions);
 
+public:
     //--------------------------------------
-    // Helper
+    // Accessors for commands (public for command header files)
     //--------------------------------------
+    const std::vector<Node>& get_nodes() const { return nodes; }
+    std::vector<Node>& get_nodes_mutable() { return nodes; }
+    const std::vector<Secret>& get_secrets() const { return secrets; }
+    void add_secret(const Secret& secret) { secrets.push_back(secret); }
+    std::string check_secret_trigger(const std::string& secret_name);
+
+    // Helper methods (public for command headers)
     auto find_pod(const std::string& pod_name) -> decltype(pods.begin());
     auto find_node(const std::string& node_name) -> decltype(nodes.begin());
+    auto find_secret(const std::string& secret_name) -> std::vector<Secret>::iterator;
+    auto pod_end() -> decltype(pods.end());
+    auto secret_end() -> decltype(secrets.end());
     int random_usage(int max);
 };
 

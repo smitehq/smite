@@ -42,14 +42,19 @@ build/src/%.o: src/%.cpp
 clean:
 	$(RM) -rf build dist $(TARGET)
 
-# Test (Catch2 header-only)
-test: $(TEST_OBJS) $(SRC_OBJS)
-	$(CXX) $(CXXFLAGS) $(SRC_OBJS) $(TEST_OBJS) -o test.exe $(LDFLAGS)
-	./test.exe
+# K8s Quest Test (specific standalone test)
+test-k8s-quest: build/tests/test_k8s_quest.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_k8s_quest.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o test_k8s_quest.exe $(LDFLAGS)
+	./test_k8s_quest.exe
 
-build/test/%.o: test/%.cpp
+# K8s Quest Test (specific standalone test)
+test-shell: build/tests/test_shell.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_shell.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o test_shell.exe $(LDFLAGS)
+	./test_shell.exe
+
+build/tests/%.o: tests/%.cpp
 	$(MKDIR) -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -I src -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Dist (create binary tarball: exe + README + optional YAMLs)
 dist: $(TARGET)
@@ -81,4 +86,4 @@ show-sources:
 	@echo "Source files:"
 	@echo $(SRC_SRCS) | tr ' ' '\n'
 
-.PHONY: clean test distcheck dist show-sources
+.PHONY: clean test distcheck dist show-sources test-k8s-quest

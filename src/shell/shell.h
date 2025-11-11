@@ -49,9 +49,9 @@ private:
     std::string current_dir_;
     std::string home_;
 
-    // Command handler type: function that takes Shell* and args, returns output
-    using CommandHandler = std::function<std::string(Shell*, const std::vector<std::string>&)>;
-    
+    // Command handler type: function that takes args, returns output
+    using CommandHandler = std::function<std::string(const std::vector<std::string>&)>;
+
     // Command registry: command name -> handler function
     std::unordered_map<std::string, CommandHandler> command_registry_;
 
@@ -59,7 +59,12 @@ private:
     std::string expand_home(const std::string& path_arg) const;
 
     // Command registration
-    void register_command(const std::string& name, CommandHandler handler);
+    // Register command factory functions - automatically passes 'this' to factory
+    template<typename FactoryFunc>
+    void register_command(const std::string& name, FactoryFunc factory) {
+        command_registry_[name] = factory(this);
+    }
+
     void register_all_commands();
     void build_base_state();
 };

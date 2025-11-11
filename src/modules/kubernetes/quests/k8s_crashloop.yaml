@@ -1,27 +1,94 @@
 id: k8s_crashloop
 title: "The Crashing Pod"
 description: "Resolve the CrashLoopBackOff for the backend pod."
+
+# Quest flow: Player must create the missing db-secret
+# When db-secret is created, the pod will automatically recover
+triggers:
+  - type: resource_created
+    resource: secret
+    name: db-secret
+    actions:
+      - type: modify_pod
+        pod: backend
+        changes:
+          status: Running
+          restarts: 0
+          container_state: running
+      - type: clear_events
+        pod: backend
+      - type: add_event
+        pod: backend
+        event:
+          type: Normal
+          reason: Started
+          message: "Started container backend-container"
+          timestamp: "2025-11-08T13:00:00"
+      - type: clear_logs
+        pod: backend
+      - type: add_log
+        pod: backend
+        log:
+          timestamp: "2025-11-08T13:00:00"
+          message: "Connecting to database..."
+      - type: add_log
+        pod: backend
+        log:
+          timestamp: "2025-11-08T13:00:05"
+          message: "Database connection established"
+      - type: add_log
+        pod: backend
+        log:
+          timestamp: "2025-11-08T13:00:06"
+          message: "Backend service started successfully"
+
 condition:
   type: pod_status
   pod: backend
   status: Running
+
 reward_xp: 100
 reward_item: "golden_kubeconfig"
+
 completion_message: |
-  🎉 POD BACK ONLINE! 🎉
-  The backend pod is now running smoothly. You feel a surge of accomplishment!
-  
-  Cluster Status: ✅ All critical pods stable.
-  
-  Your debugging skills have impressed the team. They mark your name in the Quest Log.
-  
-  You have found a rare item: 'golden_kubeconfig' — it glimmers in your inventory.
+
+  ╔═══════════════════════════════════════════════════════════════════╗
+  ║                                                                   ║
+  ║              ⚡ QUEST COMPLETE: THE CRASHING POD ⚡                ║
+  ║                                                                   ║
+  ║                    ✦✦✦ YOU HAVE SMITED IT! ✦✦✦                    ║
+  ║                                                                   ║
+  ╚═══════════════════════════════════════════════════════════════════╝
+
+  The backend pod springs back to life! Database credentials secured,
+  connections restored, and the cluster is stable once more.
+
+  Your debugging prowess has turned chaos into order.
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  🏆 REWARDS:
+     • Experience Points: +100 XP
+     • Item Acquired: 'Golden Kubeconfig' (Rare)
+     • Achievement Unlocked: "Secret Keeper"
+
+  🔓 NEW QUEST AVAILABLE: "Database Restoration"
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  The cluster administrator nods approvingly. You have proven yourself
+  worthy of greater challenges ahead.
+
+
 hints:
   - "Check the pod's events to identify the root cause of the crash."
   - "Investigate the logs for error messages related to database connectivity."
   - "Ensure that the required secrets are correctly configured and accessible."
+  - "List secrets with 'kubectl get secrets' to see what's available."
+
 unlock_quests:
   - k8s_database_restore
+
 milestone_bonus:
   xp_multiplier: 1.2
   message: "Bonus XP! You resolved the crash efficiently, earning a small mastery boost."
