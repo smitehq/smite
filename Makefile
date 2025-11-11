@@ -44,13 +44,13 @@ clean:
 
 # K8s Quest Test (specific standalone test)
 test-k8s-quest: build/tests/test_k8s_quest.o $(SRC_OBJS)
-	$(CXX) $(CXXFLAGS) build/tests/test_k8s_quest.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o test_k8s_quest.exe $(LDFLAGS)
-	./test_k8s_quest.exe
+	$(CXX) $(CXXFLAGS) build/tests/test_k8s_quest.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_quest.exe $(LDFLAGS)
+	./build/tests/test_k8s_quest.exe
 
-# K8s Quest Test (specific standalone test)
+# Shell module (specific standalone test)
 test-shell: build/tests/test_shell.o $(SRC_OBJS)
-	$(CXX) $(CXXFLAGS) build/tests/test_shell.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o test_shell.exe $(LDFLAGS)
-	./test_shell.exe
+	$(CXX) $(CXXFLAGS) build/tests/test_shell.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_shell.exe $(LDFLAGS)
+	./build/tests/test_shell.exe
 
 build/tests/%.o: tests/%.cpp
 	$(MKDIR) -p $(dir $@)
