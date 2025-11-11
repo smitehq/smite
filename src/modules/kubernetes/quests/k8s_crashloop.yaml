@@ -2,6 +2,22 @@ id: k8s_crashloop
 title: "The Crashing Pod"
 description: "Resolve the CrashLoopBackOff for the backend pod."
 
+intro_text: |
+  Deep within the Kubernetes cluster, chaos reigns. The backend pod writhes
+  in an endless cycle of crashes, its container gasping for life before
+  plunging back into darkness.
+
+  The logs tell a tale of desperation: Each restart is a failed resurrection, 
+  each attempt futile.
+
+  The cluster trembles. Services fail. Users rage. Time is running out.
+
+  Your mission: Uncover the missing secret.
+  Break the curse of the CrashLoopBackOff before the entire system
+  crumbles into digital oblivion.
+
+  The pod's fate... is in your hands.
+
 # Quest flow: Player must create the missing db-secret
 # When db-secret is created, the pod will automatically recover
 triggers:
@@ -51,33 +67,20 @@ reward_xp: 100
 reward_item: "golden_kubeconfig"
 
 completion_message: |
-
-  ╔═══════════════════════════════════════════════════════════════════╗
-  ║                                                                   ║
-  ║              ⚡ QUEST COMPLETE: THE CRASHING POD ⚡                ║
-  ║                                                                   ║
-  ║                    ✦✦✦ YOU HAVE SMITED IT! ✦✦✦                    ║
-  ║                                                                   ║
-  ╚═══════════════════════════════════════════════════════════════════╝
-
   The backend pod springs back to life! Database credentials secured,
   connections restored, and the cluster is stable once more.
 
   Your debugging prowess has turned chaos into order.
 
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  REWARDS:
+   * Golden Kubeconfig (Legendary Artifact)
+   * Achievement Unlocked: "Secret Keeper"
+   * Title Earned: "Bane of CrashLoops"
 
-  🏆 REWARDS:
-     • Experience Points: +100 XP
-     • Item Acquired: 'Golden Kubeconfig' (Rare)
-     • Achievement Unlocked: "Secret Keeper"
+  The cluster administrator bows deeply. "You wield kubectl like a weapon
+  of legend," they whisper. "The gods of DevOps themselves would be proud."
 
-  🔓 NEW QUEST AVAILABLE: "Database Restoration"
-
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  The cluster administrator nods approvingly. You have proven yourself
-  worthy of greater challenges ahead.
+  Your name will echo through the namespaces for generations to come.
 
 
 hints:

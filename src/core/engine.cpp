@@ -37,7 +37,7 @@ Engine::Engine(const std::string& modulesDir)
         for (const auto& c : router_.list_commands()) {
             oss << "  " << c << "\n";
         }
-        oss << "Other engine commands: modules, quests, quit\n";
+        oss << "Other engine commands: modules, quests, hint, quit\n";
         return oss.str();
     });
 
@@ -45,10 +45,32 @@ Engine::Engine(const std::string& modulesDir)
         std::ostringstream oss;
         oss << "Modules loaded:\n";
         for (const auto& mod : router_.get_modules()) {
-            oss << "  - " << mod->name() 
+            oss << "  - " << mod->name()
                 << " (commands: " << mod->registered_prefixes().size() << ")\n";
         }
         return oss.str();
+    });
+
+    register_command("hint", [this](const auto&) -> std::string {
+        // Find which module has an active quest
+        std::string active_module;
+        for (const auto& mod : router_.get_modules()) {
+            // Check if this module has an active quest
+            auto quests = quests_.get_quests_for_module(mod->name());
+            for (const auto& q : quests) {
+                if (quests_.is_active(mod->name(), q.id)) {
+                    active_module = mod->name();
+                    break;
+                }
+            }
+            if (!active_module.empty()) break;
+        }
+
+        if (active_module.empty()) {
+            return "No active quest. Activate a quest first with: quests <module> <quest_id>\n";
+        }
+
+        return quests_.get_next_hint(active_module);
     });
 
     register_command("quests", [this](const auto& args) -> std::string {
@@ -67,17 +89,49 @@ Engine::Engine(const std::string& modulesDir)
         }
         
         const auto& quest_id = args[2];
-        if (!quests_.activate_quest(mod, quest_id)) {
+
+        // Get quest details for intro text
+        const Quest* quest = quests_.get_quest(mod, quest_id);
+        if (!quest) {
             return "Quest not found.\n";
         }
 
+        // Activate in QuestManager
+        if (!quests_.activate_quest(mod, quest_id)) {
+            return "Failed to activate quest.\n";
+        }
+
+        // Activate in module
         auto mod_ptr = router_.get_module_by_name(mod);
         if (!mod_ptr) {
             return fmt::format("Module not found: {}\n", mod);
         }
         mod_ptr->activate_quest(quest_id);
 
-        return fmt::format("Activated quest {} for {}.\n", quest_id, mod);
+        // Display epic quest activation message
+        std::string output = "\n";
+        output += "========================================================================\n";
+        output += "                   ** QUEST ACTIVATED **                               \n";
+        output += "========================================================================\n";
+        output += "\n";
+        output += fmt::format("  >> {}\n", fmt::styled(quest->title, globals::style::header));
+        output += "  ----------------------------------------------------------------------\n";
+        output += "\n";
+
+        // Display intro text if available
+        if (!quest->intro_text.empty()) {
+            output += quest->intro_text + "\n\n";
+        } else {
+            output += "  " + quest->description + "\n\n";
+        }
+
+        output += "  ----------------------------------------------------------------------\n";
+        output += fmt::format("  Reward: {}\n", fmt::styled("+" + std::to_string(quest->reward_xp) + " XP", globals::style::success));
+        output += "\n";
+        output += fmt::format("  {}\n", fmt::styled("May your debugging skills be sharp and your logs be clear.", globals::style::info));
+        output += "\n";
+
+        return output;
     });
 }
 

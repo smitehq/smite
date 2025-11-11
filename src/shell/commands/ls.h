@@ -15,12 +15,20 @@ inline auto cmd_ls(Shell* shell) {
     return [shell](const std::vector<std::string>& args) -> std::string {
         std::string target;
         bool long_format = false;
+        bool show_all = false;
         std::string current_dir = shell->get_current_dir();
 
-        // parse args
+        // parse args (handles combined flags like -la, -al, or separate -l -a)
         for (const auto& arg : args) {
-            if (arg == "-l") long_format = true;
-            else if (target.empty()) target = arg; // first non-flag arg is the path
+            if (arg.size() > 1 && arg[0] == '-') {
+                // Parse flag(s)
+                for (size_t i = 1; i < arg.size(); ++i) {
+                    if (arg[i] == 'l') long_format = true;
+                    else if (arg[i] == 'a') show_all = true;
+                }
+            } else if (target.empty()) {
+                target = arg; // first non-flag arg is the path
+            }
         }
         if (target.empty()) target = current_dir; // default to current dir
 
@@ -32,23 +40,41 @@ inline auto cmd_ls(Shell* shell) {
         if (long_format) {
             // simple total (approximate)
             size_t total_blocks = 0;
-            for (const auto& f : dir->files) total_blocks += (f.second->content.size() + 511) / 512;
+            for (const auto& f : dir->files) {
+                if (!show_all && !f.first.empty() && f.first[0] == '.') continue;
+                total_blocks += (f.second->content.size() + 511) / 512;
+            }
             out << "total " << total_blocks << "\n";
+
+            // Show . and .. when -a is used
+            if (show_all) {
+                out << "drwxr-xr-x " << (2 + dir->subdirs.size()) << " " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " 4096 Nov  1 00:00 .\n";
+                out << "drwxr-xr-x 5 " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " 4096 Nov  1 00:00 ..\n";
+            }
 
             // directories
             for (const auto& d : dir->subdirs) {
+                if (!show_all && !d.first.empty() && d.first[0] == '.') continue;
                 out << "drwxr-xr-x " << (2 + dir->subdirs.size()) << " " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " 4096 Nov  1 00:00 " << d.first << "\n";
             }
 
             // files
             for (const auto& f : dir->files) {
+                if (!show_all && !f.first.empty() && f.first[0] == '.') continue;
                 out << f.second->perms << " 1 " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " "
                     << f.second->content.size() << " " << f.second->modified_at << " "
                     << f.first << "\n";
             }
         } else {
-            for (const auto& f : dir->files) out << f.first << " ";
-            for (const auto& d : dir->subdirs) out << d.first << "/ ";
+            // Simple format
+            for (const auto& f : dir->files) {
+                if (!show_all && !f.first.empty() && f.first[0] == '.') continue;
+                out << f.first << " ";
+            }
+            for (const auto& d : dir->subdirs) {
+                if (!show_all && !d.first.empty() && d.first[0] == '.') continue;
+                out << d.first << "/ ";
+            }
             out << "\n";
         }
 

@@ -1,5 +1,6 @@
 #include "module.h"
 #include "shell/nano.h"
+#include "state/quest.h"
 #include <yaml-cpp/yaml.h>
 #include <filesystem>
 #include <iostream>
@@ -454,12 +455,14 @@ std::string KubernetesModule::check_quest_completion() {
     if (evaluate_condition(quest["condition"])) {
         quest_completed = true;
 
-        // Return the completion message if it exists
+        // Get the completion message from YAML
+        std::string completion_msg = "Quest completed!";
         if (quest["completion_message"]) {
-            return quest["completion_message"].as<std::string>();
+            completion_msg = quest["completion_message"].as<std::string>();
         }
 
-        return "Quest completed!";
+        // Wrap it in epic SMITE celebration
+        return QuestManager::quest_accomplished(completion_msg);
     }
 
     return "";  // Quest not yet complete

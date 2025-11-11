@@ -35,6 +35,9 @@ public:
     // Module cross talk
     std::shared_ptr<SmiteModule> get_module_by_name(const std::string& name) const;
 
+    // Quest access
+    const QuestManager& get_quest_manager() const { return quests_; }
+
 private:
     std::string modules_dir_;
     Router router_;
