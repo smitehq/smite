@@ -15,7 +15,14 @@ TAR := $(MSYS2_TOOLS)/tar
 VERSION := 0.1.0
 
 # Source files
-SRC_SRCS := $(wildcard src/*.cpp) $(wildcard src/core/*.cpp) $(wildcard src/modules/**/*.cpp)
+SRC_SRCS := $(wildcard src/*.cpp) \
+            $(wildcard src/core/*.cpp) \
+            $(wildcard src/shell/*.cpp) \
+            $(wildcard src/shell/commands/*.cpp) \
+            $(wildcard src/state/*.cpp) \
+            $(wildcard src/modules/**/*.cpp) \
+			$(wildcard src/modules/**/commands/*.cpp)
+
 TEST_SRCS := $(wildcard test/*.cpp)
 
 # Object files (all under build/)
@@ -71,4 +78,9 @@ distcheck: dist
 	$(RM) -rf smite-$(VERSION)
 	$(RM) dist/smite-$(VERSION).tar.gz
 
-.PHONY: clean test distcheck dist
+# Debug target to show what files are being compiled
+show-sources:
+	@echo "Source files:"
+	@echo $(SRC_SRCS) | tr ' ' '\n'
+
+.PHONY: clean test distcheck dist show-sources

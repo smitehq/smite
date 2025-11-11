@@ -3,24 +3,31 @@
 #include <sstream>
 #include <algorithm>
 #include <iostream>
-#include <readline/readline.h>
-#include <readline/history.h>
-#include <cstdlib> // for strdup
 #include <fmt/core.h>
 
-// needed for readline completion
-static Router* g_router_for_completion = nullptr;
-
 void Router::add_module(std::shared_ptr<SmiteModule> module) {
-    modules.push_back(module);
+    if (!module) {
+        std::cerr << "Error: Attempted to add null module to router\n";
+        return;
+    }
+
+    modules_.push_back(module);
 
     // Precompute prefix → module map
     for (const auto& prefix : module->registered_prefixes()) {
-        prefix_map[prefix] = module;
+        if (prefix.empty()) {
+            std::cerr << "Warning: Module " << module->name() 
+                      << " registered empty prefix\n";
+            continue;
+        }
+
+        prefix_map_[prefix] = module;
 
         // Track longest prefix in tokens
         size_t tok_count = Utils::tokenize_command(prefix).size();
-        if (tok_count > max_prefix_tokens) max_prefix_tokens = tok_count;
+        if (tok_count > max_prefix_tokens_) {
+            max_prefix_tokens_ = tok_count;
+        }
     }
 }
 
@@ -29,13 +36,19 @@ std::string Router::handle_command(const std::vector<std::string>& tokens) {
     if (tokens.empty()) return "";
 
     // Try longest possible prefixes first, down to 1 token
-    size_t try_len = std::min(tokens.size(), max_prefix_tokens);
+    size_t try_len = std::min(tokens.size(), max_prefix_tokens_);
+    
     while (try_len > 0) {
-        std::string prefix = tokens[0];
-        for (size_t i = 1; i < try_len; ++i) prefix += " " + tokens[i];
+        // Use ostringstream for efficient string building
+        std::ostringstream prefix_builder;
+        prefix_builder << tokens[0];
+        for (size_t i = 1; i < try_len; ++i) {
+            prefix_builder << " " << tokens[i];
+        }
+        std::string prefix = prefix_builder.str();
 
-        auto it = prefix_map.find(prefix);
-        if (it != prefix_map.end()) {
+        auto it = prefix_map_.find(prefix);
+        if (it != prefix_map_.end()) {
             std::vector<std::string> args(tokens.begin() + try_len, tokens.end());
             return it->second->run_command(prefix, args);
         }
@@ -48,35 +61,46 @@ std::string Router::handle_command(const std::vector<std::string>& tokens) {
 
 std::vector<std::string> Router::list_commands() const {
     std::vector<std::string> out;
-    for (auto &m : modules) {
-        auto pfx = m->registered_prefixes();
-        out.insert(out.end(), pfx.begin(), pfx.end());
+    out.reserve(prefix_map_.size());  // Pre-allocate
+    
+    for (const auto& [prefix, _] : prefix_map_) {
+        out.push_back(prefix);
     }
+    
     std::sort(out.begin(), out.end());
     return out;
 }
 
-std::vector<std::shared_ptr<SmiteModule>> Router::get_modules() const { 
-    return modules; 
+const std::vector<std::shared_ptr<SmiteModule>>& Router::get_modules() const { 
+    return modules_; 
 }
 
 std::shared_ptr<SmiteModule> Router::get_module_by_name(const std::string& name) const {
-    for (const auto& mod : modules) {
-        if (mod->name() == name) return mod;
+    if (name.empty()) return nullptr;
+    
+    for (const auto& mod : modules_) {
+        if (mod && mod->name() == name) {
+            return mod;
+        }
     }
     return nullptr;
 }
 
-std::vector<std::string> Router::complete_command(const std::vector<std::string>& tokens, size_t token_index, const std::string& current_token) const {
+std::vector<std::string> Router::complete_command(
+    const std::vector<std::string>& tokens, 
+    size_t token_index, 
+    const std::string& current_token) const {
+    
     std::vector<std::string> results;
+    results.reserve(prefix_map_.size());  // Reasonable estimate
 
-    for (const auto& [prefix, module] : prefix_map) {
+    for (const auto& [prefix, module] : prefix_map_) {
         auto cmd_tokens = Utils::tokenize_command(prefix);
 
-        // skip if typed tokens are longer than the command
+        // Skip if typed tokens are longer than the command
         if (token_index >= cmd_tokens.size()) continue;
 
-        // check if all tokens so far match the command prefix
+        // Check if all tokens so far match the command prefix
         bool match = true;
         for (size_t i = 0; i < token_index; ++i) {
             if (i >= tokens.size() || cmd_tokens[i] != tokens[i]) {
@@ -86,13 +110,17 @@ std::vector<std::string> Router::complete_command(const std::vector<std::string>
         }
         if (!match) continue;
 
-        // offer completion for the current token
-        if (cmd_tokens[token_index].rfind(current_token, 0) == 0) {
-            results.push_back(cmd_tokens[token_index]);
+        // Offer completion for the current token
+        const std::string& candidate = cmd_tokens[token_index];
+        if (candidate.size() >= current_token.size() && 
+            candidate.compare(0, current_token.size(), current_token) == 0) {
+            results.push_back(candidate);
         }
     }
 
+    // Remove duplicates
     std::sort(results.begin(), results.end());
     results.erase(std::unique(results.begin(), results.end()), results.end());
+    
     return results;
 }

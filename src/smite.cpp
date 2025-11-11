@@ -1,7 +1,7 @@
 #include "globals.h"
 #include "core/engine.h"
 #include "core/router.h"
-#include "core/shell.h"
+#include "shell/shell.h"
 #include <memory>
 #include <iostream>
 
@@ -30,9 +30,10 @@ int main(int argc, char** argv) {
 
     // create router & engine and register modules
     Engine engine("./src/modules"); // modules folder path (ignored for static proto)
+    // engine.load_modules(); // would load dynamic modules from folder
 
     auto shell = create_module_shell();  // Always first
-    if (!shell->load_from_path("./src/core/shell")) {
+    if (!shell->load_from_path("./src/shell")) {
         std::cerr << "Failed to load shell module\n";
         return 1;
     }
