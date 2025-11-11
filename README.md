@@ -4,7 +4,7 @@
 
 *smite.sh* is a CLI-based troubleshooting simulator for DevOps apprentices. Dive into interactive scenarios mimicking real-world Kubernetes (K8s), AWS EKS, and Linux environments. Learn by breaking and fixing-quests guide you through outages, scaling issues, and config mishaps, all in a safe, emulated REPL.
 
-Built with C++17, *yaml-cpp* for state, *fmt* for styled output, and a modular router for plug-and-play extensions.
+Built with C++20, *yaml-cpp* for state, *fmt* for styled output, and a modular router for plug-and-play extensions.
 
 ---
 
@@ -24,7 +24,7 @@ Built with C++17, *yaml-cpp* for state, *fmt* for styled output, and a modular r
 1.  **Prerequisites**
     
     -   MSYS2 MinGW-w64 (Windows) or Clang toolchain (Linux/macOS)
-    -   Clang++ 17+
+    -   Clang++ 20+
         ```bash
         pacman -S mingw-w64-x86_64-{clang,yaml-cpp,fmt,ncurses,readline}
         ```
@@ -157,7 +157,7 @@ Activate via `quests <module> <id>`:
 ## Contributing
 
 -   PRs welcome - focus on gameplay feel and extensibility.
--   Code style: modern C++17, RAII, smart pointers.
+-   Code style: modern C++20, RAII, smart pointers.
 -   Scenarios: add YAMLs under `/modules/<name>/`
     - Module state in `state.yaml` and quests in `quests.yaml`
     
