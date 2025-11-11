@@ -49,7 +49,6 @@ private:
                       std::function<std::string(const std::vector<std::string>&)>> engine_commands_;
 
     // Helpers
-    static std::string trim(const std::string& str);
     std::string get_prompt();
     
     // Get shell module with caching

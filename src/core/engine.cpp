@@ -184,7 +184,7 @@ void Engine::repl() {
             break;
         }
         
-        std::string cmd = trim(input);
+        std::string cmd = Utils::trim(input);
         if (!cmd.empty()) {
             add_history(input);
         }
@@ -195,8 +195,8 @@ void Engine::repl() {
         // Handle multi-command chaining "&&"
         size_t and_pos = cmd.find(" && ");
         if (and_pos != std::string::npos) {
-            std::string cmd1 = trim(cmd.substr(0, and_pos));
-            std::string cmd2 = trim(cmd.substr(and_pos + 4));
+            std::string cmd1 = Utils::trim(cmd.substr(0, and_pos));
+            std::string cmd2 = Utils::trim(cmd.substr(and_pos + 4));
             
             if (!cmd1.empty() && !cmd2.empty()) {
                 std::string out1 = dispatch_command(cmd1);
@@ -236,13 +236,7 @@ void Engine::repl() {
 // --------------------------
 // Helpers
 // --------------------------
-std::string Engine::trim(const std::string& str) {
-    size_t start = str.find_first_not_of(" \t\r\n");
-    if (start == std::string::npos) return "";
-    
-    size_t end = str.find_last_not_of(" \t\r\n");
-    return str.substr(start, end - start + 1);
-}
+
 
 std::string Engine::get_prompt() {
     auto shell = get_shell_module();
