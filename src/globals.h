@@ -17,11 +17,11 @@ namespace globals {
 		inline static constexpr auto info   = fmt::fg(fmt::color::cyan);
 		inline static constexpr auto success= fmt::fg(fmt::color::green) | fmt::emphasis::bold;
 		inline static constexpr auto header = fmt::fg(fmt::color::yellow) | fmt::emphasis::bold;
-		inline static constexpr auto sword  = u8"🗡️ ";
-		inline static constexpr auto smite  = u8"⚡ ";
-		inline static constexpr auto clock  = u8"⏱️ ";
-		inline static constexpr auto shield  = u8"🛡️ ";
-		inline static constexpr auto quest  = u8"🌍 ";
+		inline static constexpr auto sword  = "🗡️ ";
+		inline static constexpr auto smite  = "⚡ ";
+		inline static constexpr auto clock  = "⏱️ ";
+		inline static constexpr auto shield = "🛡️ ";
+		inline static constexpr auto quest  = "🌍 ";
 	};
 
 } // namespace globals

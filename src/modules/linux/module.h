@@ -9,7 +9,7 @@
 #include <functional>
 #include <unordered_map>
 #include <yaml-cpp/yaml.h>  // Full YAML for Node (not just fwd decl)
-#include "core/shell.h"
+#include "shell/shell.h"
 
 //--------------------------------------
 // LinuxModule
