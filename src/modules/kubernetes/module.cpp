@@ -24,25 +24,6 @@ bool KubernetesModule::load_from_path(const std::string& modulePath) {
         return false;
     }
 
-    // // ----------------------
-    // // Scan Quests Folder
-    // // ----------------------
-    // fs::path quests_dir = fs::path(modulePath) / "quests";
-    // if (!fs::exists(quests_dir) || !fs::is_directory(quests_dir)) return false;
-
-    // for (auto& file : fs::directory_iterator(quests_dir)) {
-    //     if (file.path().extension() != ".yaml") continue;
-    //     try {
-    //         YAML::Node quest_yaml = YAML::LoadFile(file.path().string());
-    //         if (!quest_yaml["id"]) continue;
-    //         std::string quest_id = quest_yaml["id"].as<std::string>();
-    //         quest_map[quest_id] = quest_yaml;
-    //     } catch (const std::exception& e) {
-    //         std::cout << "Failed to load quest " << file.path() << ": " << e.what() << "\n";
-    //         return false;
-    //     }
-    // }
-
     register_builtin_commands();
     return true;
 }

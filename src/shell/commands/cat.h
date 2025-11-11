@@ -1,18 +1,26 @@
+// ============================================
+// src/shell/commands/cat.h
+// ============================================
 #ifndef SHELL_COMMANDS_CAT_H
 #define SHELL_COMMANDS_CAT_H
 
-#include "../shell_command.h"
+#include "../shell.h"
 
-class CatCommand : public ShellCommand {
-public:
-    explicit CatCommand(Shell* shell);
+namespace shell_commands {
 
-    std::string execute(const std::vector<std::string>& args) override;
-    std::string name() const override;
-    std::string help() const override;
-};
+inline std::string cat(Shell* shell, const std::vector<std::string>& args) {
+    if (args.empty()) return "cat: No file provided\n";
 
-// Factory function
-std::unique_ptr<ShellCommand> create_cat_command(Shell* shell);
+    std::string file_path = shell->resolve_path(args[0]);
+    auto [dir, filename] = shell->get_dir_and_file(file_path);
+
+    if (!dir || dir->files.count(filename) == 0) {
+        return "cat: " + args[0] + ": No such file or directory\n";
+    }
+
+    return dir->files[filename]->content + "\n";
+}
+
+} // namespace shell_commands
 
 #endif // SHELL_COMMANDS_CAT_H

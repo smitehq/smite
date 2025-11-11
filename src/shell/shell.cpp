@@ -22,7 +22,7 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-// Thread-local context for completion (safer than global mutable state)
+// Thread-local context for auto-completion
 thread_local Shell::CompletionContext* g_completion_context = nullptr;
 
 Shell::Shell() : root_(std::make_unique<Dir>()) {}
@@ -70,35 +70,24 @@ void Shell::build_base_state() {
 // Command Registration
 // ============================================
 
-void Shell::register_command(std::unique_ptr<ShellCommand> cmd) {
-    if (!cmd) {
-        std::cerr << "Warning: Attempted to register null command\n";
-        return;
-    }
-
-    std::string cmd_name = cmd->name();
-    if (cmd_name.empty()) {
+void Shell::register_command(const std::string& name, CommandHandler handler) {
+    if (name.empty()) {
         std::cerr << "Warning: Attempted to register command with empty name\n";
         return;
     }
-
-    // Store raw pointer in map for fast lookup
-    command_map_[cmd_name] = cmd.get();
-    
-    // Store owned pointer
-    commands_.push_back(std::move(cmd));
+    command_registry_[name] = std::move(handler);
 }
 
 void Shell::register_all_commands() {
-    // Register all commands using factory functions
-    register_command(create_ls_command(this));
-    register_command(create_cd_command(this));
-    register_command(create_pwd_command(this));
-    register_command(create_cat_command(this));
-    register_command(create_echo_command(this));
-    register_command(create_touch_command(this));
-    register_command(create_chmod_command(this));
-    register_command(create_nano_command(this));
+    // Register commands - just bind the function to 'this'
+    register_command("ls",    [](Shell* s, const auto& a) { return shell_commands::ls(s, a); });
+    register_command("cd",    [](Shell* s, const auto& a) { return shell_commands::cd(s, a); });
+    register_command("pwd",   [](Shell* s, const auto& a) { return shell_commands::pwd(s, a); });
+    register_command("cat",   [](Shell* s, const auto& a) { return shell_commands::cat(s, a); });
+    register_command("echo",  [](Shell* s, const auto& a) { return shell_commands::echo(s, a); });
+    register_command("touch", [](Shell* s, const auto& a) { return shell_commands::touch(s, a); });
+    register_command("chmod", [](Shell* s, const auto& a) { return shell_commands::chmod(s, a); });
+    register_command("nano",  [](Shell* s, const auto& a) { return shell_commands::nano(s, a); });
 }
 
 // ============================================
@@ -167,15 +156,14 @@ Dir* Shell::get_dir(const string& path_arg) const {
 // Module Interface
 // ============================================
 
-std::string Shell::run_command(const std::string& cmdPrefix, 
-                              const std::vector<std::string>& args) {
-    auto it = command_map_.find(cmdPrefix);
-    if (it == command_map_.end()) {
+std::string Shell::run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) {
+    auto it = command_registry_.find(cmdPrefix);
+    if (it == command_registry_.end()) {
         return "Command not found: " + cmdPrefix + "\n";
     }
     
     try {
-        return it->second->execute(args);
+        return it->second(this, args);  // Call handler with this pointer
     } catch (const std::exception& e) {
         return std::string("Error executing command: ") + e.what() + "\n";
     }
@@ -187,20 +175,20 @@ bool Shell::evaluate_condition(const YAML::Node&) {
 
 std::vector<std::string> Shell::registered_prefixes() const {
     std::vector<std::string> out;
-    out.reserve(command_map_.size());
+    out.reserve(command_registry_.size());
     
-    for (const auto& [cmd_name, _] : command_map_) {
+    for (const auto& [cmd_name, _] : command_registry_) {
         out.push_back(cmd_name);
     }
     return out;
 }
 
 bool Shell::supports_command(const std::string& cmdPrefix) const {
-    return command_map_.find(cmdPrefix) != command_map_.end();
+    return command_registry_.find(cmdPrefix) != command_registry_.end();
 }
 
 // ============================================
-// Autocompletion
+// Autocompletion (unchanged)
 // ============================================
 
 static char* universal_generator(const char* text, int state) {
@@ -230,12 +218,10 @@ static char* universal_generator(const char* text, int state) {
             current_token = tokens.back();
         }
 
-        // Command completion
         auto cmd_matches = g_completion_context->router->complete_command(
             tokens, token_index, current_token);
         matches.insert(matches.end(), cmd_matches.begin(), cmd_matches.end());
 
-        // Filesystem completion
         if (matches.empty() && token_index > 0) {
             auto dir_opt = g_completion_context->shell->get_dir_safe(
                 g_completion_context->shell->get_current_dir());

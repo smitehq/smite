@@ -1,18 +1,59 @@
+
+// ============================================
+// src/shell/commands/ls.h
+// ============================================
 #ifndef SHELL_COMMANDS_LS_H
 #define SHELL_COMMANDS_LS_H
 
-#include "../shell_command.h"
+#include "../shell.h"
+#include <sstream>
+#include <algorithm>
 
-class LsCommand : public ShellCommand {
-public:
-    explicit LsCommand(Shell* shell);
+namespace shell_commands {
 
-    std::string execute(const std::vector<std::string>& args) override;
-    std::string name() const override;
-    std::string help() const override;
-};
+inline std::string ls(Shell* shell, const std::vector<std::string>& args) {
+        std::string target;
+        bool long_format = false;
+        std::string current_dir = shell->get_current_dir();
 
-// Factory function
-std::unique_ptr<ShellCommand> create_ls_command(Shell* shell);
+        // parse args
+        for (const auto& arg : args) {
+            if (arg == "-l") long_format = true;
+            else if (target.empty()) target = arg; // first non-flag arg is the path
+        }
+        if (target.empty()) target = current_dir; // default to current dir
+
+        Dir* dir = shell->get_dir(shell->resolve_path(target));
+        if (!dir) return "ls: No such directory: " + target + "\n";
+
+        std::stringstream out;
+
+        if (long_format) {
+            // simple total (approximate)
+            size_t total_blocks = 0;
+            for (const auto& f : dir->files) total_blocks += (f.second->content.size() + 511) / 512;
+            out << "total " << total_blocks << "\n";
+
+            // directories
+            for (const auto& d : dir->subdirs) {
+                out << "drwxr-xr-x " << (2 + dir->subdirs.size()) << " " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " 4096 Nov  1 00:00 " << d.first << "\n";
+            }
+
+            // files
+            for (const auto& f : dir->files) {
+                out << f.second->perms << " 1 " << globals::PLAYER_NAME << " " << globals::PLAYER_NAME << " "
+                    << f.second->content.size() << " " << f.second->modified_at << " "
+                    << f.first << "\n";
+            }
+        } else {
+            for (const auto& f : dir->files) out << f.first << " ";
+            for (const auto& d : dir->subdirs) out << d.first << "/ ";
+            out << "\n";
+        }
+
+        return out.str();
+}
+
+} // namespace shell_commands
 
 #endif // SHELL_COMMANDS_LS_H

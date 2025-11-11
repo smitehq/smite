@@ -1,19 +1,27 @@
 // ============================================
-// echo.h
+// src/shell/commands/echo.h
 // ============================================
 #ifndef SHELL_COMMANDS_ECHO_H
 #define SHELL_COMMANDS_ECHO_H
 
-#include "../shell_command.h"
+#include "../shell.h"
+#include <sstream>
 
-class EchoCommand : public ShellCommand {
-public:
-    explicit EchoCommand(Shell* shell);
-    std::string execute(const std::vector<std::string>& args) override;
-    std::string name() const override;
-    std::string help() const override;
-};
+namespace shell_commands {
 
-std::unique_ptr<ShellCommand> create_echo_command(Shell* shell);
+inline std::string echo(Shell*, const std::vector<std::string>& args) {
+    if (args.empty()) return "\n";
+
+    std::ostringstream oss;
+    for (size_t i = 0; i < args.size(); ++i) {
+        oss << args[i];
+        if (i < args.size() - 1) oss << " ";
+    }
+    oss << "\n";
+    
+    return oss.str();
+}
+
+} // namespace shell_commands
 
 #endif // SHELL_COMMANDS_ECHO_H

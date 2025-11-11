@@ -3,7 +3,6 @@
 
 #include "../core/router.h"
 #include "../core/module_interface.h"
-#include "shell_command.h"
 #include "types/file.h"
 #include "types/dir.h"
 #include <string>
@@ -22,8 +21,7 @@ public:
     // Module interface
     std::string name() const override;
     bool load_from_path(const std::string& rootPath) override;
-    std::string run_command(const std::string& cmdPrefix, 
-                           const std::vector<std::string>& args) override;
+    std::string run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) override;
     bool supports_command(const std::string& cmdPrefix) const override;
     bool evaluate_condition(const YAML::Node& conditionSpec) override;
     std::vector<std::string> registered_prefixes() const override;
@@ -51,17 +49,17 @@ private:
     std::string current_dir_;
     std::string home_;
 
-    // Command storage - owns the command objects
-    std::vector<std::unique_ptr<ShellCommand>> commands_;
+    // Command handler type: function that takes Shell* and args, returns output
+    using CommandHandler = std::function<std::string(Shell*, const std::vector<std::string>&)>;
     
-    // Fast lookup map: command name -> command object
-    std::unordered_map<std::string, ShellCommand*> command_map_;
+    // Command registry: command name -> handler function
+    std::unordered_map<std::string, CommandHandler> command_registry_;
 
     // Filesystem helpers
     std::string expand_home(const std::string& path_arg) const;
 
     // Command registration
-    void register_command(std::unique_ptr<ShellCommand> cmd);
+    void register_command(const std::string& name, CommandHandler handler);
     void register_all_commands();
     void build_base_state();
 };

@@ -18,10 +18,8 @@ VERSION := 0.1.0
 SRC_SRCS := $(wildcard src/*.cpp) \
             $(wildcard src/core/*.cpp) \
             $(wildcard src/shell/*.cpp) \
-            $(wildcard src/shell/commands/*.cpp) \
             $(wildcard src/state/*.cpp) \
-            $(wildcard src/modules/**/*.cpp) \
-			$(wildcard src/modules/**/commands/*.cpp)
+            $(wildcard src/modules/**/*.cpp)
 
 TEST_SRCS := $(wildcard test/*.cpp)
 

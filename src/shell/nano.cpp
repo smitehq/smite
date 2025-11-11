@@ -113,10 +113,12 @@ bool Nano::open(const std::string& name, const std::string& content,
 
         int max_y, max_x;
         getmaxyx(stdscr, max_y, max_x);
+        
+        int text_height = max_y - 2;  // Reserve space for header and footer
 
         // Create windows with RAII - automatic cleanup
         NCursesWindow header_win(1, max_x, 0, 0);
-        NCursesWindow text_win(max_y - 2, max_x, 1, 0);
+        NCursesWindow text_win(text_height, max_x, 1, 0);
         NCursesWindow footer_win(1, max_x, max_y - 1, 0);
 
         wbkgd(text_win.get(), COLOR_PAIR(1));
@@ -145,19 +147,11 @@ bool Nano::open(const std::string& name, const std::string& content,
 
         cursor_row_ = 0;
         cursor_col_ = 0;
+        int top_line = 0;  // First visible line in the viewport
         bool running = true;
 
         while (running) {
-            // Draw buffer
-            werase(text_win.get());
-            int text_height = max_y - 2;
-            size_t visible_lines = std::min(buffer_.size(), static_cast<size_t>(text_height));
-            
-            for (size_t i = 0; i < visible_lines; ++i) {
-                mvwprintw(text_win.get(), i, 0, "%s", buffer_[i].c_str());
-            }
-
-            // Bounds check cursor
+            // Bounds check cursor (logical position in buffer)
             if (cursor_row_ >= static_cast<int>(buffer_.size())) {
                 cursor_row_ = static_cast<int>(buffer_.size()) - 1;
             }
@@ -168,7 +162,56 @@ bool Nano::open(const std::string& name, const std::string& content,
             }
             if (cursor_col_ < 0) cursor_col_ = 0;
 
-            wmove(text_win.get(), cursor_row_, cursor_col_);
+            // Adjust viewport to keep cursor visible
+            // If cursor moved above the viewport, scroll up
+            if (cursor_row_ < top_line) {
+                top_line = cursor_row_;
+            }
+            
+            // If cursor moved below the viewport, scroll down
+            if (cursor_row_ >= top_line + text_height) {
+                top_line = cursor_row_ - text_height + 1;
+            }
+            
+            // Clamp top_line to valid range
+            if (top_line < 0) {
+                top_line = 0;
+            }
+            
+            // Only clamp max if we have more lines than viewport
+            if (static_cast<int>(buffer_.size()) > text_height) {
+                int max_top_line = static_cast<int>(buffer_.size()) - text_height;
+                if (top_line > max_top_line) {
+                    top_line = max_top_line;
+                }
+            }
+
+            // Draw visible portion of buffer
+            werase(text_win.get());
+            for (int i = 0; i < text_height; ++i) {
+                int buffer_line = top_line + i;
+                if (buffer_line >= static_cast<int>(buffer_.size())) break;
+                
+                // Safely print line (handle long lines)
+                const std::string& line_text = buffer_[buffer_line];
+                if (line_text.size() > static_cast<size_t>(max_x)) {
+                    // Truncate very long lines to prevent buffer overflow
+                    std::string truncated = line_text.substr(0, max_x - 1);
+                    mvwprintw(text_win.get(), i, 0, "%s", truncated.c_str());
+                } else {
+                    mvwprintw(text_win.get(), i, 0, "%s", line_text.c_str());
+                }
+            }
+
+            // Calculate screen cursor position (relative to viewport)
+            int screen_row = cursor_row_ - top_line;
+            int screen_col = cursor_col_;
+            
+            // Ensure cursor is within screen bounds
+            if (screen_row >= 0 && screen_row < text_height) {
+                wmove(text_win.get(), screen_row, screen_col);
+            }
+            
             wrefresh(text_win.get());
 
             int ch = wgetch(text_win.get());
@@ -228,6 +271,32 @@ bool Nano::open(const std::string& name, const std::string& content,
                     }
                     break;
 
+                case KEY_HOME:  // Home key - go to start of line
+                case 1:         // Ctrl+A
+                    cursor_col_ = 0;
+                    break;
+
+                case KEY_END:   // End key - go to end of line
+                case 5:         // Ctrl+E
+                    cursor_col_ = static_cast<int>(buffer_[cursor_row_].size());
+                    break;
+
+                case KEY_PPAGE: // Page Up
+                    cursor_row_ -= text_height;
+                    if (cursor_row_ < 0) cursor_row_ = 0;
+                    cursor_col_ = std::min(cursor_col_, 
+                                          static_cast<int>(buffer_[cursor_row_].size()));
+                    break;
+
+                case KEY_NPAGE: // Page Down
+                    cursor_row_ += text_height;
+                    if (cursor_row_ >= static_cast<int>(buffer_.size())) {
+                        cursor_row_ = static_cast<int>(buffer_.size()) - 1;
+                    }
+                    cursor_col_ = std::min(cursor_col_, 
+                                          static_cast<int>(buffer_[cursor_row_].size()));
+                    break;
+
                 case 10: // Enter
                 case KEY_ENTER:
                     buffer_.insert(buffer_.begin() + cursor_row_ + 1,
@@ -248,6 +317,16 @@ bool Nano::open(const std::string& name, const std::string& content,
                         buffer_[cursor_row_ - 1] += buffer_[cursor_row_];
                         buffer_.erase(buffer_.begin() + cursor_row_);
                         cursor_row_--;
+                    }
+                    break;
+
+                case KEY_DC:    // Delete key
+                case 4:         // Ctrl+D
+                    if (cursor_col_ < static_cast<int>(buffer_[cursor_row_].size())) {
+                        buffer_[cursor_row_].erase(cursor_col_, 1);
+                    } else if (cursor_row_ < static_cast<int>(buffer_.size()) - 1) {
+                        buffer_[cursor_row_] += buffer_[cursor_row_ + 1];
+                        buffer_.erase(buffer_.begin() + cursor_row_ + 1);
                     }
                     break;
 

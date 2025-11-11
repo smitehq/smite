@@ -1,19 +1,17 @@
 // ============================================
-// pwd.h
+// src/shell/commands/pwd.h
 // ============================================
 #ifndef SHELL_COMMANDS_PWD_H
 #define SHELL_COMMANDS_PWD_H
 
-#include "../shell_command.h"
+#include "../shell.h"
 
-class PwdCommand : public ShellCommand {
-public:
-    explicit PwdCommand(Shell* shell);
-    std::string execute(const std::vector<std::string>& args) override;
-    std::string name() const override;
-    std::string help() const override;
-};
+namespace shell_commands {
 
-std::unique_ptr<ShellCommand> create_pwd_command(Shell* shell);
+inline std::string pwd(Shell* shell, const std::vector<std::string>&) {
+    return shell->get_current_dir() + "\n";
+}
+
+} // namespace shell_commands
 
 #endif // SHELL_COMMANDS_PWD_H

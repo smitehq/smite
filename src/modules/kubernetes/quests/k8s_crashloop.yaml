@@ -6,7 +6,22 @@ condition:
   pod: backend
   status: Running
 reward_xp: 100
+reward_item: "golden_kubeconfig"
+completion_message: |
+  🎉 POD BACK ONLINE! 🎉
+  The backend pod is now running smoothly. You feel a surge of accomplishment!
+  
+  Cluster Status: ✅ All critical pods stable.
+  
+  Your debugging skills have impressed the team. They mark your name in the Quest Log.
+  
+  You have found a rare item: 'golden_kubeconfig' — it glimmers in your inventory.
 hints:
   - "Check the pod's events to identify the root cause of the crash."
   - "Investigate the logs for error messages related to database connectivity."
   - "Ensure that the required secrets are correctly configured and accessible."
+unlock_quests:
+  - k8s_database_restore
+milestone_bonus:
+  xp_multiplier: 1.2
+  message: "Bonus XP! You resolved the crash efficiently, earning a small mastery boost."

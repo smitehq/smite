@@ -1,19 +1,40 @@
 // ============================================
-// chmod.h
+// src/shell/commands/chmod.h
 // ============================================
 #ifndef SHELL_COMMANDS_CHMOD_H
 #define SHELL_COMMANDS_CHMOD_H
 
-#include "../shell_command.h"
+#include "../shell.h"
 
-class ChmodCommand : public ShellCommand {
-public:
-    explicit ChmodCommand(Shell* shell);
-    std::string execute(const std::vector<std::string>& args) override;
-    std::string name() const override;
-    std::string help() const override;
-};
+namespace shell_commands {
 
-std::unique_ptr<ShellCommand> create_chmod_command(Shell* shell);
+inline std::string chmod(Shell* shell, const std::vector<std::string>& args) {
+    if (args.size() < 2) {
+        return "chmod: missing operand\nUsage: chmod <mode> <file>\n";
+    }
+
+    std::string mode = args[0];
+    std::string file_path = shell->resolve_path(args[1]);
+    auto [dir, filename] = shell->get_dir_and_file(file_path);
+
+    if (!dir || dir->files.count(filename) == 0) {
+        return "chmod: cannot access '" + args[1] + "': No such file or directory\n";
+    }
+
+    if (mode.size() != 3 && mode.size() != 4) {
+        return "chmod: invalid mode: '" + mode + "'\n";
+    }
+
+    for (char c : mode) {
+        if (c < '0' || c > '7') {
+            return "chmod: invalid mode: '" + mode + "'\n";
+        }
+    }
+
+    dir->files[filename]->perms = mode;
+    return "";
+}
+
+} // namespace shell_commands
 
 #endif // SHELL_COMMANDS_CHMOD_H
