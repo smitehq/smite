@@ -1,7 +1,7 @@
 #ifndef MODULES_KUBERNETES_COMMANDS_GET_EVENTS_H
 #define MODULES_KUBERNETES_COMMANDS_GET_EVENTS_H
 
-#include "../module.h"
+#include "modules/kubernetes/module.h"
 #include <sstream>
 #include <iomanip>
 #include <vector>

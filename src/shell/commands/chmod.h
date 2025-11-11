@@ -4,7 +4,7 @@
 #ifndef SHELL_COMMANDS_CHMOD_H
 #define SHELL_COMMANDS_CHMOD_H
 
-#include "../shell.h"
+#include "shell/shell.h"
 
 namespace shell_commands {
 

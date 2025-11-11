@@ -1,8 +1,8 @@
 #ifndef SHELL_H
 #define SHELL_H
 
-#include "../core/router.h"
-#include "../core/module_interface.h"
+#include "core/router.h"
+#include "core/module_interface.h"
 #include "types/file.h"
 #include "types/dir.h"
 #include <string>

@@ -4,7 +4,7 @@
 #ifndef SHELL_COMMANDS_PWD_H
 #define SHELL_COMMANDS_PWD_H
 
-#include "../shell.h"
+#include "shell/shell.h"
 
 namespace shell_commands {
 

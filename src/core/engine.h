@@ -8,7 +8,7 @@
 #include <functional>
 #include "module_interface.h"
 #include "router.h"
-#include "../state/quest.h"
+#include "state/quest.h"
 
 // Forward declarations
 class Shell;

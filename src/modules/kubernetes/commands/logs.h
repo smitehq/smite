@@ -1,7 +1,7 @@
 #ifndef MODULES_KUBERNETES_COMMANDS_LOGS_H
 #define MODULES_KUBERNETES_COMMANDS_LOGS_H
 
-#include "../module.h"
+#include "modules/kubernetes/module.h"
 #include <sstream>
 
 namespace kubectl_commands {

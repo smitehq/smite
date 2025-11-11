@@ -4,7 +4,7 @@
 #ifndef SHELL_COMMANDS_ECHO_H
 #define SHELL_COMMANDS_ECHO_H
 
-#include "../shell.h"
+#include "shell/shell.h"
 #include <sstream>
 
 namespace shell_commands {

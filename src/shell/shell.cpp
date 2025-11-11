@@ -1,6 +1,6 @@
 #include "shell.h"
-#include "../globals.h"
-#include "../core/utils.h"
+#include "globals.h"
+#include "core/utils.h"
 
 // Include all command headers
 #include "commands/ls.h"

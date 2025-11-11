@@ -1,7 +1,7 @@
 #ifndef MODULES_KUBERNETES_COMMANDS_DELETE_POD_H
 #define MODULES_KUBERNETES_COMMANDS_DELETE_POD_H
 
-#include "../module.h"
+#include "modules/kubernetes/module.h"
 #include <sstream>
 #include <algorithm>
 

@@ -4,7 +4,7 @@
 #ifndef SHELL_COMMANDS_TOUCH_H
 #define SHELL_COMMANDS_TOUCH_H
 
-#include "../shell.h"
+#include "shell/shell.h"
 #include <memory>
 
 namespace shell_commands {

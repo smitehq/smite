@@ -1,14 +1,14 @@
 #include "globals.h"
 #include "utils.h"
 #include "engine.h"
-#include "../shell/shell.h"
+#include "shell/shell.h"
 #include <filesystem>
 #include <iostream>
 #include <yaml-cpp/yaml.h>
 #include <sstream>
 #include <readline/readline.h>
 #include <readline/history.h>
-#include "../state/quest.h"
+#include "state/quest.h"
 
 namespace fs = std::filesystem;
 

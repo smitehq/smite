@@ -4,8 +4,8 @@
 #ifndef SHELL_COMMANDS_NANO_CMD_H
 #define SHELL_COMMANDS_NANO_CMD_H
 
-#include "../shell.h"
-#include "../nano.h"
+#include "shell/shell.h"
+#include "shell/nano.h"
 #include <memory>
 
 namespace shell_commands {

@@ -1,7 +1,7 @@
 #ifndef MODULES_KUBERNETES_COMMANDS_GET_NODES_H
 #define MODULES_KUBERNETES_COMMANDS_GET_NODES_H
 
-#include "../module.h"
+#include "modules/kubernetes/module.h"
 #include <sstream>
 #include <iomanip>
 

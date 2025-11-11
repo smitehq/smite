@@ -5,7 +5,7 @@
 #ifndef SHELL_COMMANDS_LS_H
 #define SHELL_COMMANDS_LS_H
 
-#include "../shell.h"
+#include "shell/shell.h"
 #include <sstream>
 #include <algorithm>
 

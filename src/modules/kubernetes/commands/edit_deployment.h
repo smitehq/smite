@@ -1,7 +1,7 @@
 #ifndef MODULES_KUBERNETES_COMMANDS_EDIT_DEPLOYMENT_H
 #define MODULES_KUBERNETES_COMMANDS_EDIT_DEPLOYMENT_H
 
-#include "../module.h"
+#include "modules/kubernetes/module.h"
 #include "shell/nano.h"
 #include <sstream>
 
