@@ -21,6 +21,7 @@ intro_text: |
 condition:
   type: node_cordoned
   node: worker-2
+  cordoned: true
 
 reward_xp: 160
 

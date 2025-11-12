@@ -15,9 +15,9 @@ intro_text: |
   You must break the cycle. Find the problem. Fix the image reference.
 
 condition:
-  type: pod_status
-  pod: frontend
-  status: Running
+  type: deployment_image
+  deployment: frontend
+  not_contains: broken-tag
 
 reward_xp: 80
 

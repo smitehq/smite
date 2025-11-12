@@ -17,9 +17,9 @@ intro_text: |
   (cluster admins) for more quota.
 
 condition:
-  type: deployment_ready
-  deployment: batch-processor
-  min_replicas: 1
+  type: resource_not_exists
+  resource: deployment
+  name: old-test
 
 reward_xp: 115
 

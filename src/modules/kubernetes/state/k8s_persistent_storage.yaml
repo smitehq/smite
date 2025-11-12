@@ -20,5 +20,11 @@ cluster:
 
   secrets: []
   configmaps: []
+  pvcs:
+    - name: database-pvc
+      status: Pending  # Needs to be Bound
+      storage_request: "10Gi"
+      storage_class: "standard"
+      age: "5m"
   deployments: []
   services: []

@@ -17,9 +17,9 @@ intro_text: |
   The pod deserves to run.
 
 condition:
-  type: pod_status
-  pod: cache
-  status: Running
+  type: deployment_affinity
+  deployment: cache
+  affinity_type: "preferred"
 
 reward_xp: 125
 

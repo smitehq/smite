@@ -16,9 +16,9 @@ intro_text: |
   Edit the deployment. Grant it more memory. Save its life.
 
 condition:
-  type: pod_status
-  pod: worker
-  status: Running
+  type: deployment_memory_limit
+  deployment: worker
+  min_limit: "512Mi"
 
 reward_xp: 90
 

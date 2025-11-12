@@ -24,9 +24,9 @@ intro_text: |
   Only when all 3 pods run again will quorum be restored and writes resume.
 
 condition:
-  type: pod_status
-  pod: cassandra-2
-  status: Running
+  type: statefulset_replicas
+  statefulset: cassandra
+  min_replicas: 3
 
 reward_xp: 130
 

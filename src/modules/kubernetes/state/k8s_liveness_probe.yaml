@@ -46,4 +46,6 @@ cluster:
       available_replicas: 0
       image: monitor-app:v1
       age: "30m"
+      liveness_initial_delay: 5  # Too short - app needs at least 10s to start
+      liveness_timeout: 1  # Too aggressive - should be at least 3s
   services: []

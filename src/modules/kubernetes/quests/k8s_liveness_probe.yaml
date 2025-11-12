@@ -16,9 +16,10 @@ intro_text: |
   checks more forgiving. Stop the endless cycle of death and rebirth.
 
 condition:
-  type: pod_restarts
-  pod: monitor
-  max_restarts: 0
+  type: deployment_liveness_probe
+  deployment: monitor
+  min_initial_delay: 10
+  min_timeout: 3
 
 reward_xp: 105
 

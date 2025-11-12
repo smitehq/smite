@@ -18,10 +18,18 @@ cluster:
 
     - name: worker-3
       ip: 10.244.0.12
-      pods: []
-
-  # Cache pod is pending - cannot find nodes matching affinity rules
-  # It wants to be co-located with redis-master but affinity rules are too strict
+      pods:
+        - name: cache
+          status: Pending
+          restarts: 0
+          image: memcached:1.6
+          container_state: waiting
+          events:
+            - type: Warning
+              reason: FailedScheduling
+              message: "0/3 nodes are available: 3 node(s) didn't match pod affinity rules"
+              timestamp: "2025-11-11T10:00:00"
+          logs: []
 
   secrets: []
   configmaps: []
@@ -32,4 +40,5 @@ cluster:
       available_replicas: 0
       image: memcached:1.6
       age: "10m"
+      affinity_type: "required"  # Too strict - needs to be "preferred" or fix node labels
   services: []

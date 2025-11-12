@@ -59,6 +59,13 @@ bool KubernetesModule::load_from_path(const std::string& modulePath) {
 void KubernetesModule::load_cluster_state(const YAML::Node& node) {
     nodes.clear();
     secrets.clear();
+    configmaps.clear();
+    pvcs.clear();
+    deployments.clear();
+    statefulsets.clear();
+    services.clear();
+    ingresses.clear();
+    network_policies.clear();
 
     if (!node["cluster"]) return;
 
@@ -68,6 +75,7 @@ void KubernetesModule::load_cluster_state(const YAML::Node& node) {
             Node node_struct;
             if (n["name"]) node_struct.name = n["name"].as<std::string>();
             if (n["ip"]) node_struct.ip = n["ip"].as<std::string>();
+            if (n["cordoned"]) node_struct.cordoned = n["cordoned"].as<bool>();
 
             if (n["pods"]) {
                 for (auto p : n["pods"]) {
@@ -106,6 +114,12 @@ void KubernetesModule::load_cluster_state(const YAML::Node& node) {
                         }
                     }
 
+                    if (p["labels"]) {
+                        for (auto lbl : p["labels"]) {
+                            pod.labels[lbl.first.as<std::string>()] = lbl.second.as<std::string>();
+                        }
+                    }
+
                     node_struct.pods.push_back(pod);
                 }
             }
@@ -130,6 +144,73 @@ void KubernetesModule::load_cluster_state(const YAML::Node& node) {
         }
     }
 
+    // Load configmaps
+    if (node["cluster"]["configmaps"]) {
+        for (auto cm : node["cluster"]["configmaps"]) {
+            ConfigMap configmap;
+            if (cm["name"]) configmap.name = cm["name"].as<std::string>();
+            if (cm["age"]) configmap.age = cm["age"].as<std::string>();
+            if (cm["data"]) {
+                for (auto kv : cm["data"]) {
+                    configmap.data[kv.first.as<std::string>()] = kv.second.as<std::string>();
+                }
+            }
+            configmaps.push_back(configmap);
+        }
+    }
+
+    // Load PVCs
+    if (node["cluster"]["pvcs"]) {
+        for (auto pvc : node["cluster"]["pvcs"]) {
+            PersistentVolumeClaim pvc_obj;
+            if (pvc["name"]) pvc_obj.name = pvc["name"].as<std::string>();
+            if (pvc["status"]) pvc_obj.status = pvc["status"].as<std::string>();
+            if (pvc["volume_name"]) pvc_obj.volume_name = pvc["volume_name"].as<std::string>();
+            if (pvc["storage_request"]) pvc_obj.storage_request = pvc["storage_request"].as<std::string>();
+            if (pvc["storage_class"]) pvc_obj.storage_class = pvc["storage_class"].as<std::string>();
+            if (pvc["age"]) pvc_obj.age = pvc["age"].as<std::string>();
+            pvcs.push_back(pvc_obj);
+        }
+    }
+
+    // Load deployments
+    if (node["cluster"]["deployments"]) {
+        for (auto d : node["cluster"]["deployments"]) {
+            Deployment deployment;
+            if (d["name"]) deployment.name = d["name"].as<std::string>();
+            if (d["replicas"]) deployment.replicas = d["replicas"].as<int>();
+            if (d["ready_replicas"]) deployment.ready_replicas = d["ready_replicas"].as<int>();
+            if (d["available_replicas"]) deployment.available_replicas = d["available_replicas"].as<int>();
+            if (d["image"]) deployment.image = d["image"].as<std::string>();
+            if (d["age"]) deployment.age = d["age"].as<std::string>();
+            if (d["revision"]) deployment.revision = d["revision"].as<int>();
+            if (d["memory_limit"]) deployment.memory_limit = d["memory_limit"].as<std::string>();
+            if (d["cpu_limit"]) deployment.cpu_limit = d["cpu_limit"].as<std::string>();
+            if (d["liveness_initial_delay"]) deployment.liveness_initial_delay = d["liveness_initial_delay"].as<int>();
+            if (d["liveness_timeout"]) deployment.liveness_timeout = d["liveness_timeout"].as<int>();
+            if (d["affinity_type"]) deployment.affinity_type = d["affinity_type"].as<std::string>();
+            if (d["labels"]) {
+                for (auto lbl : d["labels"]) {
+                    deployment.labels[lbl.first.as<std::string>()] = lbl.second.as<std::string>();
+                }
+            }
+            deployments.push_back(deployment);
+        }
+    }
+
+    // Load statefulsets
+    if (node["cluster"]["statefulsets"]) {
+        for (auto s : node["cluster"]["statefulsets"]) {
+            StatefulSet statefulset;
+            if (s["name"]) statefulset.name = s["name"].as<std::string>();
+            if (s["replicas"]) statefulset.replicas = s["replicas"].as<int>();
+            if (s["ready_replicas"]) statefulset.ready_replicas = s["ready_replicas"].as<int>();
+            if (s["image"]) statefulset.image = s["image"].as<std::string>();
+            if (s["age"]) statefulset.age = s["age"].as<std::string>();
+            statefulsets.push_back(statefulset);
+        }
+    }
+
     // Load ingresses
     if (node["cluster"]["ingresses"]) {
         for (auto ing : node["cluster"]["ingresses"]) {
@@ -148,6 +229,39 @@ void KubernetesModule::load_cluster_state(const YAML::Node& node) {
                 }
             }
             ingresses.push_back(ingress);
+        }
+    }
+
+    // Load services
+    if (node["cluster"]["services"]) {
+        for (auto svc : node["cluster"]["services"]) {
+            Service service;
+            if (svc["name"]) service.name = svc["name"].as<std::string>();
+            if (svc["type"]) service.type = svc["type"].as<std::string>();
+            if (svc["cluster_ip"]) service.cluster_ip = svc["cluster_ip"].as<std::string>();
+            if (svc["external_ip"]) service.external_ip = svc["external_ip"].as<std::string>();
+            if (svc["age"]) service.age = svc["age"].as<std::string>();
+            if (svc["ports"]) {
+                for (auto port : svc["ports"]) {
+                    service.ports.push_back(port.as<std::string>());
+                }
+            }
+            if (svc["selector"]) {
+                for (auto sel : svc["selector"]) {
+                    service.selector[sel.first.as<std::string>()] = sel.second.as<std::string>();
+                }
+            }
+            services.push_back(service);
+        }
+    }
+
+    // Load network policies
+    if (node["cluster"]["networkpolicies"]) {
+        for (auto np : node["cluster"]["networkpolicies"]) {
+            NetworkPolicy policy;
+            if (np["name"]) policy.name = np["name"].as<std::string>();
+            if (np["age"]) policy.age = np["age"].as<std::string>();
+            network_policies.push_back(policy);
         }
     }
 }
@@ -343,10 +457,32 @@ bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
             auto it = find_secret(name);
             return it != secret_end();
         }
-        else if (resource == "networkpolicy" || resource == "ingress") {
-            // NetworkPolicies and Ingress aren't currently stored, so assume created if checked
-            // TODO: Add proper storage for these resources
-            return true;
+        else if (resource == "networkpolicy") {
+            auto it = std::find_if(network_policies.begin(), network_policies.end(),
+                [&](const NetworkPolicy& np) { return np.name == name; });
+            return it != network_policies.end();
+        }
+        else if (resource == "ingress") {
+            auto it = std::find_if(ingresses.begin(), ingresses.end(),
+                [&](const Ingress& ing) { return ing.name == name; });
+            return it != ingresses.end();
+        }
+        return false;
+    }
+
+    // resource_not_exists: Check if a resource does NOT exist (inverse of resource_exists)
+    else if (t == "resource_not_exists") {
+        std::string resource = conditionSpec["resource"].as<std::string>();
+        std::string name = conditionSpec["name"].as<std::string>();
+
+        if (resource == "deployment") {
+            auto it = std::find_if(deployments.begin(), deployments.end(),
+                [&](const Deployment& d) { return d.name == name; });
+            return it == deployments.end();  // True if NOT found
+        }
+        else if (resource == "pod") {
+            auto it = find_pod(name);
+            return it == pod_end();  // True if NOT found
         }
         return false;
     }
@@ -357,6 +493,25 @@ bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
         auto it = std::find_if(deployments.begin(), deployments.end(),
             [&](const Deployment& d) { return d.name == name; });
         if (it == deployments.end()) return false;
+
+        if (conditionSpec["min_replicas"] && conditionSpec["max_replicas"]) {
+            int min = conditionSpec["min_replicas"].as<int>();
+            int max = conditionSpec["max_replicas"].as<int>();
+            return it->replicas >= min && it->replicas <= max;
+        }
+        else if (conditionSpec["min_replicas"]) {
+            int min = conditionSpec["min_replicas"].as<int>();
+            return it->replicas >= min;
+        }
+        return false;
+    }
+
+    // statefulset_replicas: Check if statefulset has specific replica count
+    else if (t == "statefulset_replicas") {
+        std::string name = conditionSpec["statefulset"].as<std::string>();
+        auto it = std::find_if(statefulsets.begin(), statefulsets.end(),
+            [&](const StatefulSet& s) { return s.name == name; });
+        if (it == statefulsets.end()) return false;
 
         if (conditionSpec["min_replicas"] && conditionSpec["max_replicas"]) {
             int min = conditionSpec["min_replicas"].as<int>();
@@ -386,6 +541,26 @@ bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
             [&](const Deployment& d) { return d.name == name; });
         if (it == deployments.end()) return false;
         return it->available_replicas > 0;
+    }
+
+    // deployment_image: Check if deployment uses a specific image (or doesn't use a bad one)
+    else if (t == "deployment_image") {
+        std::string name = conditionSpec["deployment"].as<std::string>();
+        auto it = std::find_if(deployments.begin(), deployments.end(),
+            [&](const Deployment& d) { return d.name == name; });
+        if (it == deployments.end()) return false;
+
+        // Check if image does NOT match a pattern (e.g., not using broken-tag)
+        if (conditionSpec["not_contains"]) {
+            std::string not_contains = conditionSpec["not_contains"].as<std::string>();
+            return it->image.find(not_contains) == std::string::npos;
+        }
+        // Check if image matches exactly
+        else if (conditionSpec["image"]) {
+            std::string expected = conditionSpec["image"].as<std::string>();
+            return it->image == expected;
+        }
+        return false;
     }
 
     // pod_restarts: Check if pod restart count meets criteria
@@ -455,8 +630,11 @@ bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
         auto node_it = find_node(node_name);
         if (node_it == nodes.end()) return false;
 
-        // Check if node has a cordoned state (would be in metadata or status)
-        // For now, check if node has zero pods (indicating it was drained/cordoned)
+        // Check actual cordoned state if specified, otherwise check if node has zero pods
+        if (conditionSpec["cordoned"]) {
+            bool expected_cordon = conditionSpec["cordoned"].as<bool>();
+            return node_it->cordoned == expected_cordon;
+        }
         return node_it->pods.empty();
     }
 
@@ -485,9 +663,14 @@ bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
 
     // pvc_status: Check PVC status
     else if (t == "pvc_status") {
-        // PVCs aren't tracked yet, but we can check if pods using them are healthy
-        // For now, return true if the condition is checked (indicates PVC was created)
-        return true;
+        std::string pvc_name = conditionSpec["pvc"].as<std::string>();
+        std::string expected_status = conditionSpec["status"].as<std::string>();
+
+        auto pvc_it = std::find_if(pvcs.begin(), pvcs.end(),
+            [&](const PersistentVolumeClaim& pvc) { return pvc.name == pvc_name; });
+
+        if (pvc_it == pvcs.end()) return false;
+        return pvc_it->status == expected_status;
     }
 
     // pod_event: Check for specific pod events
@@ -519,14 +702,25 @@ bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
         if (svc_it == services.end()) return false;
 
         // Check if there are pods matching the service selector
-        // For now, we'll assume if the service exists and has a selector, it has endpoints
         int min_endpoints = conditionSpec["min_endpoints"] ? conditionSpec["min_endpoints"].as<int>() : 1;
 
-        // Count pods matching service selector
+        // Count Running pods that match ALL selector labels
         int endpoint_count = 0;
         for (const auto& node : nodes) {
             for (const auto& pod : node.pods) {
-                if (pod.status == "Running") {
+                if (pod.status != "Running") continue;
+
+                // Check if pod matches ALL service selector labels
+                bool matches = true;
+                for (const auto& selector_pair : svc_it->selector) {
+                    auto pod_label = pod.labels.find(selector_pair.first);
+                    if (pod_label == pod.labels.end() || pod_label->second != selector_pair.second) {
+                        matches = false;
+                        break;
+                    }
+                }
+
+                if (matches) {
                     endpoint_count++;
                     if (endpoint_count >= min_endpoints) return true;
                 }
@@ -552,6 +746,79 @@ bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
         }
 
         return true;
+    }
+
+    // deployment_memory_limit: Check deployment memory limit meets minimum
+    else if (t == "deployment_memory_limit") {
+        std::string deployment_name = conditionSpec["deployment"].as<std::string>();
+
+        auto dep_it = std::find_if(deployments.begin(), deployments.end(),
+            [&](const Deployment& d) { return d.name == deployment_name; });
+
+        if (dep_it == deployments.end()) return false;
+        if (dep_it->memory_limit.empty()) return false;
+
+        // Check if memory limit meets minimum (e.g., "512Mi")
+        if (conditionSpec["min_limit"]) {
+            std::string min_limit = conditionSpec["min_limit"].as<std::string>();
+            // Simple comparison: extract numeric value
+            // "256Mi" -> 256, "1Gi" -> 1024
+            auto parse_memory = [](const std::string& mem) -> int {
+                if (mem.empty()) return 0;
+                int value = std::stoi(mem);
+                if (mem.find("Gi") != std::string::npos) return value * 1024;
+                return value; // Assume Mi
+            };
+
+            int actual = parse_memory(dep_it->memory_limit);
+            int required = parse_memory(min_limit);
+            return actual >= required;
+        }
+
+        return true; // Has a memory limit set
+    }
+
+    // deployment_liveness_probe: Check deployment liveness probe configuration
+    else if (t == "deployment_liveness_probe") {
+        std::string deployment_name = conditionSpec["deployment"].as<std::string>();
+
+        auto dep_it = std::find_if(deployments.begin(), deployments.end(),
+            [&](const Deployment& d) { return d.name == deployment_name; });
+
+        if (dep_it == deployments.end()) return false;
+
+        // Check if liveness probe is configured (delay > 0)
+        if (conditionSpec["min_initial_delay"]) {
+            int min_delay = conditionSpec["min_initial_delay"].as<int>();
+            if (dep_it->liveness_initial_delay < min_delay) return false;
+        }
+
+        if (conditionSpec["min_timeout"]) {
+            int min_timeout = conditionSpec["min_timeout"].as<int>();
+            if (dep_it->liveness_timeout < min_timeout) return false;
+        }
+
+        // Just check probe exists
+        return dep_it->liveness_initial_delay > 0 && dep_it->liveness_timeout > 0;
+    }
+
+    // deployment_affinity: Check deployment affinity configuration
+    else if (t == "deployment_affinity") {
+        std::string deployment_name = conditionSpec["deployment"].as<std::string>();
+
+        auto dep_it = std::find_if(deployments.begin(), deployments.end(),
+            [&](const Deployment& d) { return d.name == deployment_name; });
+
+        if (dep_it == deployments.end()) return false;
+
+        // Check affinity type matches expected
+        if (conditionSpec["affinity_type"]) {
+            std::string expected_type = conditionSpec["affinity_type"].as<std::string>();
+            return dep_it->affinity_type == expected_type;
+        }
+
+        // Check affinity is not "none"
+        return !dep_it->affinity_type.empty() && dep_it->affinity_type != "none";
     }
 
     return false;

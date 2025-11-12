@@ -36,4 +36,5 @@ cluster:
       available_replicas: 0
       image: memory-hog:v1
       age: "15m"
+      memory_limit: "256Mi"  # Too low - needs at least 512Mi
   services: []

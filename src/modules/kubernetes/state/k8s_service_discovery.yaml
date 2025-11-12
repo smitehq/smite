@@ -25,6 +25,9 @@ cluster:
           restarts: 0
           image: api-server:v1
           container_state: running
+          labels:
+            app: api-server
+            version: v1
           logs:
             - timestamp: "2025-11-11T10:00:00"
               message: "API server listening on port 8080"

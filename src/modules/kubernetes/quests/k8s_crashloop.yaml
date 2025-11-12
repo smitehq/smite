@@ -60,9 +60,9 @@ triggers:
           message: "Backend service started successfully"
 
 condition:
-  type: pod_status
-  pod: backend
-  status: Running
+  type: resource_exists
+  resource: secret
+  name: db-secret
 
 reward_xp: 100
 reward_item: "golden_kubeconfig"

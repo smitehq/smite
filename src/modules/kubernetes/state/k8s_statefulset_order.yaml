@@ -35,6 +35,12 @@ cluster:
   secrets: []
   configmaps: []
   deployments: []
+  statefulsets:
+    - name: cassandra
+      replicas: 1
+      ready_replicas: 1
+      image: cassandra:4.0
+      age: "2h"
   services:
     - name: cassandra
       type: ClusterIP

@@ -21,9 +21,9 @@ intro_text: |
   you and disaster: rollout undo.
 
 condition:
-  type: deployment_rollout
+  type: deployment_image
   deployment: payment-service
-  successful: true
+  not_contains: broken
 
 reward_xp: 150
 

@@ -43,12 +43,14 @@ struct Pod {
     std::string ip;
     std::string image;
     std::vector<PodLog> logs;      // container logs
+    std::unordered_map<std::string, std::string> labels;  // pod labels for selector matching
 };
 
 struct Node {
     std::string name;
     std::string ip;
     std::vector<Pod> pods;
+    bool cordoned = false;  // Track if node is cordoned (unschedulable)
 };
 
 struct Secret {
@@ -66,6 +68,16 @@ struct ConfigMap {
     std::string age = "0s";
 };
 
+struct PersistentVolumeClaim {
+    std::string name;
+    std::string ns = "default";
+    std::string status = "Pending";  // "Pending", "Bound", "Lost"
+    std::string volume_name;  // Name of bound PV
+    std::string storage_request;  // e.g., "1Gi", "10Gi"
+    std::string storage_class;  // e.g., "standard", "fast-ssd"
+    std::string age = "0s";
+};
+
 struct Deployment {
     std::string name;
     std::string ns = "default";
@@ -76,6 +88,20 @@ struct Deployment {
     std::string age = "0s";
     std::unordered_map<std::string, std::string> labels;
     int revision = 1;  // For rollout history
+    std::string memory_limit;  // e.g., "256Mi", "512Mi", "1Gi"
+    std::string cpu_limit;     // e.g., "100m", "500m", "1"
+    int liveness_initial_delay = 0;  // initialDelaySeconds for liveness probe
+    int liveness_timeout = 0;        // timeoutSeconds for liveness probe
+    std::string affinity_type;       // "none", "required", "preferred"
+};
+
+struct StatefulSet {
+    std::string name;
+    std::string ns = "default";
+    int replicas = 1;
+    int ready_replicas = 0;
+    std::string image;
+    std::string age = "0s";
 };
 
 struct Service {
@@ -100,6 +126,12 @@ struct Ingress {
     std::string name;
     std::string ns = "default";
     std::vector<IngressRule> rules;
+    std::string age = "0s";
+};
+
+struct NetworkPolicy {
+    std::string name;
+    std::string ns = "default";
     std::string age = "0s";
 };
 
@@ -135,9 +167,12 @@ private:
     std::vector<Node> nodes;
     std::vector<Secret> secrets;
     std::vector<ConfigMap> configmaps;
+    std::vector<PersistentVolumeClaim> pvcs;
     std::vector<Deployment> deployments;
+    std::vector<StatefulSet> statefulsets;
     std::vector<Service> services;
     std::vector<Ingress> ingresses;
+    std::vector<NetworkPolicy> network_policies;
     YAML::Node default_state_yaml;
     std::string active_quest_id;
     std::unordered_map<std::string, YAML::Node> quest_data;  // quest_id -> quest YAML
@@ -180,6 +215,8 @@ public:
     void add_secret(const Secret& secret) { secrets.push_back(secret); }
     const std::vector<ConfigMap>& get_configmaps() const { return configmaps; }
     void add_configmap(const ConfigMap& cm) { configmaps.push_back(cm); }
+    const std::vector<PersistentVolumeClaim>& get_pvcs() const { return pvcs; }
+    std::vector<PersistentVolumeClaim>& get_pvcs_mutable() { return pvcs; }
     const std::vector<Deployment>& get_deployments() const { return deployments; }
     std::vector<Deployment>& get_deployments_mutable() { return deployments; }
     const std::vector<Service>& get_services() const { return services; }
