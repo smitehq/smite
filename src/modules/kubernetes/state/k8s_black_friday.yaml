@@ -1,0 +1,165 @@
+cluster:
+  name: prod-ecommerce-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: frontend-7d9c8b-xk2mp
+          status: Running
+          restarts: 2
+          image: frontend:v2.1
+          container_state: running
+          logs:
+            - timestamp: "2025-11-25T00:01:00"
+              message: "[INFO] Frontend server started on port 8080"
+            - timestamp: "2025-11-25T00:03:15"
+              message: "[WARN] High request volume detected: 5000 req/s"
+            - timestamp: "2025-11-25T00:05:22"
+              message: "[ERROR] Payment API timeout after 30s - request failed"
+            - timestamp: "2025-11-25T00:05:23"
+              message: "[ERROR] Payment API timeout after 30s - request failed"
+            - timestamp: "2025-11-25T00:05:24"
+              message: "[ERROR] Payment API timeout after 30s - request failed"
+          events:
+            - type: Warning
+              reason: Unhealthy
+              message: "Readiness probe failed: timeout waiting for payment service"
+              timestamp: "2025-11-25T00:05:20"
+
+        - name: frontend-7d9c8b-pq8nx
+          status: Running
+          restarts: 1
+          image: frontend:v2.1
+          container_state: running
+          logs:
+            - timestamp: "2025-11-25T00:02:00"
+              message: "[INFO] Frontend server started on port 8080"
+            - timestamp: "2025-11-25T00:04:30"
+              message: "[WARN] High request volume detected: 5200 req/s"
+            - timestamp: "2025-11-25T00:06:10"
+              message: "[ERROR] Payment API timeout after 30s - request failed"
+          events: []
+
+    - name: worker-2
+      ip: 10.244.0.11
+      pods:
+        - name: product-api-5f8d7c-kl9mx
+          status: Running
+          restarts: 3
+          image: product-api:v1.8
+          container_state: running
+          logs:
+            - timestamp: "2025-11-25T00:01:00"
+              message: "[INFO] Product API service starting..."
+            - timestamp: "2025-11-25T00:03:00"
+              message: "[INFO] Connected to product database"
+            - timestamp: "2025-11-25T00:04:45"
+              message: "[WARN] Database query slow (2.3s): SELECT * FROM products WHERE featured=true"
+            - timestamp: "2025-11-25T00:05:30"
+              message: "[WARN] High load: 1500 queries/sec"
+            - timestamp: "2025-11-25T00:06:15"
+              message: "[ERROR] Timeout calling payment-processor for price verification"
+          events:
+            - type: Warning
+              reason: BackOff
+              message: "Back-off restarting failed container"
+              timestamp: "2025-11-25T00:05:00"
+
+        - name: product-api-5f8d7c-nm4tk
+          status: Running
+          restarts: 2
+          image: product-api:v1.8
+          container_state: running
+          logs:
+            - timestamp: "2025-11-25T00:02:00"
+              message: "[INFO] Product API service starting..."
+            - timestamp: "2025-11-25T00:03:30"
+              message: "[INFO] Connected to product database"
+            - timestamp: "2025-11-25T00:06:00"
+              message: "[ERROR] Timeout calling payment-processor for price verification"
+          events: []
+
+        - name: product-api-5f8d7c-wr7hs
+          status: Running
+          restarts: 1
+          image: product-api:v1.8
+          container_state: running
+          logs:
+            - timestamp: "2025-11-25T00:02:30"
+              message: "[INFO] Product API service starting..."
+            - timestamp: "2025-11-25T00:04:00"
+              message: "[INFO] Connected to product database"
+          events: []
+
+    - name: worker-3
+      ip: 10.244.0.12
+      pods:
+        - name: payment-processor-9k3d2c-zh8vx
+          status: CrashLoopBackOff
+          restarts: 47
+          image: payment-processor:v3.2
+          container_state: waiting
+          last_state:
+            reason: Error
+            exit_code: 137
+            started: "2025-11-25T00:05:45"
+            finished: "2025-11-25T00:05:58"
+          logs:
+            - timestamp: "2025-11-25T00:05:45"
+              message: "[INFO] Payment processor starting..."
+            - timestamp: "2025-11-25T00:05:46"
+              message: "[INFO] Connecting to payment gateway..."
+            - timestamp: "2025-11-25T00:05:47"
+              message: "[INFO] Payment processor ready - processing transactions"
+            - timestamp: "2025-11-25T00:05:48"
+              message: "[WARN] High transaction volume: 500 tx/sec"
+            - timestamp: "2025-11-25T00:05:50"
+              message: "[WARN] Queue depth increasing: 1200 pending transactions"
+            - timestamp: "2025-11-25T00:05:52"
+              message: "[ERROR] Memory pressure: 245MB / 256MB"
+            - timestamp: "2025-11-25T00:05:54"
+              message: "[CRITICAL] Queue depth critical: 3000 pending transactions"
+            - timestamp: "2025-11-25T00:05:56"
+              message: "[ERROR] Memory exhausted: 254MB / 256MB"
+            - timestamp: "2025-11-25T00:05:58"
+              message: "[FATAL] OOMKilled - cannot allocate memory for transaction buffer"
+          events:
+            - type: Warning
+              reason: BackOff
+              message: "Back-off restarting failed container"
+              timestamp: "2025-11-25T00:06:30"
+            - type: Warning
+              reason: FailedScheduling
+              message: "0/3 nodes available after repeated crashes"
+              timestamp: "2025-11-25T00:06:00"
+            - type: Normal
+              reason: Killing
+              message: "Container payment-processor failed liveness probe, will be restarted"
+              timestamp: "2025-11-25T00:05:58"
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: frontend
+      replicas: 2
+      ready_replicas: 2
+      available_replicas: 2
+      image: frontend:v2.1
+      age: "30d"
+
+    - name: product-api
+      replicas: 3
+      ready_replicas: 3
+      available_replicas: 3
+      image: product-api:v1.8
+      age: "15d"
+
+    - name: payment-processor
+      replicas: 1
+      ready_replicas: 0
+      available_replicas: 0
+      image: payment-processor:v3.2
+      age: "45d"
+      memory_limit: "256Mi"
+
+  services: []

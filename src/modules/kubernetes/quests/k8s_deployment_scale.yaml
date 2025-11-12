@@ -7,13 +7,15 @@ intro_text: |
   The api deployment strains under crushing load. A single replica cannot
   handle the tsunami of requests crashing against its shores.
 
-  Users wait. Timeouts accumulate. The system groans.
+  Users wait. Timeouts accumulate. The system groans. Response times crawl
+  into the seconds. The monitoring dashboard screams red.
 
   You have the power to multiply this pod, to create replicas that share
   the burden. Horizontal scaling - the ancient art of adding more workers
   instead of making one worker stronger.
 
-  Scale the api deployment to 5 replicas. Distribute the load. Save the day.
+  But how many? Too few and the load persists. Too many and you waste
+  resources. Find the right balance. Distribute the load. Save the day.
 
 condition:
   type: deployment_replicas

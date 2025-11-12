@@ -5,17 +5,18 @@ difficulty: intermediate
 
 intro_text: |
   The config-consumer pod starts with hope in its heart, but quickly
-  realizes something is terribly wrong. It searches for a ConfigMap
-  named "app-config" but finds only void.
+  realizes something is terribly wrong. The logs scream: "FATAL: cannot
+  proceed without configuration".
 
   Without configuration, the application cannot function. It doesn't know
   which database to connect to, which features to enable, which secrets
   to unlock.
 
-  It crashes. It restarts. It crashes again.
+  It crashes. It restarts. It crashes again. Each failure another user
+  request lost.
 
-  You must create the missing ConfigMap. Give the application the guidance
-  it needs to thrive.
+  You must investigate what's missing and provide what the application
+  needs to thrive.
 
 condition:
   type: resource_exists

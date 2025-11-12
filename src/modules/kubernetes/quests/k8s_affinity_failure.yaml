@@ -5,16 +5,16 @@ difficulty: advanced
 
 intro_text: |
   The cache pod exists in a state of limbo - created but never scheduled.
-  It waits for a node that meets its impossible demands, affinity rules
-  so strict that no node can satisfy them.
+  It waits for a node that meets its demands, rules so strict that no
+  node can satisfy them.
 
   "0/3 nodes are available: 3 node(s) didn't match pod affinity rules"
 
   The pod demands to be co-located with pods that don't exist. It requires
   node labels that were never applied. It asks for the impossible.
 
-  You must relax these constraints or fix the cluster to satisfy them.
-  The pod deserves to run.
+  The application team is furious. Your cache layer is down. Performance
+  is terrible. You must find a way to get this pod scheduled.
 
 condition:
   type: deployment_affinity

@@ -1,0 +1,61 @@
+id: k8s_black_friday
+title: "Black Friday Meltdown"
+description: "Your e-commerce site is collapsing under Black Friday traffic. Find the bottleneck and scale it before you lose millions."
+difficulty: expert
+
+intro_text: |
+  BLACK FRIDAY. 12:01 AM. The deals go live.
+
+  Your phone explodes with alerts. PagerDuty. Slack. Email. All screaming
+  the same thing: SITE DOWN. TIMEOUTS. ERRORS.
+
+  The monitoring dashboard is a sea of red. Traffic is 50x normal levels.
+  Multiple services are struggling. The frontend reports slow responses.
+  The product API is timing out. Something is very wrong.
+
+  But what? Which service is the actual bottleneck? You can't scale
+  everything - that wastes money and might not even fix it. You need to
+  identify the weakest link in the chain.
+
+  Time to investigate. Every second of downtime costs thousands of dollars.
+  Your customers are waiting. Your CEO is watching.
+
+  Find the bottleneck. Scale it. Save Black Friday.
+
+condition:
+  type: deployment_replicas
+  deployment: payment-processor
+  min_replicas: 10
+
+reward_xp: 140
+
+completion_message: |
+  The payment-processor scales from 1 to 10 replicas! The bottleneck
+  shatters. Transactions flow again. Orders process. Money moves.
+
+  The frontend stops timing out - it was waiting on payment processing.
+  The product API calms down - it was being hammered by retries.
+  The whole system stabilizes like dominoes falling backward.
+
+  You identified the single-replica payment processor as the bottleneck
+  and scaled it appropriately. Black Friday is SAVED.
+
+  CRISIS AVERTED. $5 MILLION IN SALES RECOVERED.
+
+  REWARDS:
+   * +140 Experience Points
+   * Achievement Unlocked: "Black Friday Hero"
+   * Title Earned: "Bottleneck Breaker"
+   * Item: "The Traffic Tamer's Badge"
+
+  You've learned that identifying the bottleneck under pressure is half
+  the battle. Investigate first, scale smart, not blind.
+
+hints:
+  - "Start with 'kubectl get pods' to see all pod statuses"
+  - "High restart counts indicate a service crashing under load"
+  - "Use 'kubectl logs <pod>' to see error messages"
+  - "Check 'kubectl get deployments' to see current replica counts"
+  - "Look for deployments with very few replicas handling critical functions"
+  - "The service with 1 replica and high restarts is likely your bottleneck"
+  - "Scale it with 'kubectl scale deployment <name> --replicas=10'"

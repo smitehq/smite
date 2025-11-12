@@ -57,6 +57,16 @@ test-quest-browser: build/tests/test_quest_browser.o $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) build/tests/test_quest_browser.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_quest_browser.exe $(LDFLAGS)
 	./build/tests/test_quest_browser.exe
 
+# K8s Spec Tracking Quests Test
+test-k8s-spec: build/tests/test_k8s_spec_quests.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_k8s_spec_quests.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_spec_quests.exe $(LDFLAGS)
+	./build/tests/test_k8s_spec_quests.exe
+
+# K8s Black Friday Quest Test
+test-k8s-black-friday: build/tests/test_k8s_black_friday.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_k8s_black_friday.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_black_friday.exe $(LDFLAGS)
+	./build/tests/test_k8s_black_friday.exe
+
 build/tests/%.o: tests/%.cpp
 	$(MKDIR) -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -91,4 +101,4 @@ show-sources:
 	@echo "Source files:"
 	@echo $(SRC_SRCS) | tr ' ' '\n'
 
-.PHONY: clean test distcheck dist show-sources test-k8s-quest test-shell test-quest-browser
+.PHONY: clean test distcheck dist show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday

@@ -4,16 +4,18 @@ description: "Rescue a pod that's being OOMKilled due to insufficient memory."
 difficulty: intermediate
 
 intro_text: |
-  The worker pod gasps for breath, for memory, for life itself. But it is
-  given too little to survive. The OOMKiller stalks it relentlessly,
-  terminating it again and again as it exceeds its meager allocation.
+  The worker pod gasps for breath, struggling to survive. It processes data
+  for mere seconds before dying. Again. And again. And again.
 
-  Exit code 137. The mark of the OOMKiller. The signature of memory starvation.
+  Exit code 137 repeats endlessly in the crash logs. The signature of
+  something terrible. The pod never completes its work. Users see failures
+  as their requests are lost mid-processing.
 
-  You must increase its memory limits, give it room to breathe, allow it
-  to process without the sword of Damocles hanging over its head.
+  The monitoring graphs show a pattern: start, spike, crash. Start, spike,
+  crash. Like a heartbeat that never stabilizes.
 
-  Edit the deployment. Grant it more memory. Save its life.
+  You must investigate why this pod cannot stay alive and fix the underlying
+  issue before all pending work is lost.
 
 condition:
   type: deployment_memory_limit

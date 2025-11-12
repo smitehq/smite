@@ -4,16 +4,17 @@ description: "Fix a failing liveness probe causing unnecessary restarts."
 difficulty: advanced
 
 intro_text: |
-  The monitor pod lives in eternal torment - killed by its own health check,
-  restarted by the kubelet, only to be killed again moments later.
+  The monitor pod lives in eternal torment - killed by something, restarted
+  by the kubelet, only to be killed again moments later.
 
-  The liveness probe is too aggressive. It checks too soon, times out too
-  quickly, fails too easily. The pod never gets a chance to prove its health.
+  The logs show it starts successfully. The application initializes. Metrics
+  collectors spin up. Then... death. Over and over.
 
   Restart count: 47. Each restart a small death. Each death unnecessary.
+  The pod never gets a chance to prove itself.
 
-  You must fix the liveness probe. Give the pod time to start. Make the
-  checks more forgiving. Stop the endless cycle of death and rebirth.
+  You must investigate what keeps killing this healthy pod and stop the
+  endless cycle of death and rebirth.
 
 condition:
   type: deployment_liveness_probe
