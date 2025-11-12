@@ -1,0 +1,59 @@
+id: k8s_statefulset_order
+title: "The Broken Quorum"
+description: "Fix a StatefulSet that lost quorum by scaling it back to 3 replicas."
+difficulty: advanced
+
+intro_text: |
+  DISASTER! Your Cassandra database cluster is in chaos.
+
+  Someone panicked during an incident and scaled the StatefulSet down to 1
+  replica, destroying the quorum. Two database nodes (cassandra-1 and
+  cassandra-2) were terminated. Their persistent data remains, but they're
+  gone.
+
+  The single remaining node (cassandra-0) refuses to accept writes without
+  quorum. Your application is READ-ONLY. Data cannot be saved. Users are
+  locked out of critical operations.
+
+  The surviving pod's logs scream: "QUORUM LOST - Need at least 2 of 3 nodes"
+
+  You must restore order to the StatefulSet. Scale it back to 3 replicas.
+  Watch as cassandra-1 and cassandra-2 rise from the ashes, reclaiming
+  their identities and their persistent volumes.
+
+  Only when all 3 pods run again will quorum be restored and writes resume.
+
+condition:
+  type: pod_status
+  pod: cassandra-2
+  status: Running
+
+reward_xp: 130
+
+completion_message: |
+  The StatefulSet heals! Pods materialize in perfect order:
+
+  First cassandra-1 awakens, claiming its persistent volume and network identity.
+  Then cassandra-2 follows, joining the cluster.
+
+  QUORUM RESTORED. The cluster reforms. Writes flow once more.
+
+  REWARDS:
+   * +130 Experience Points
+   * Achievement Unlocked: "Quorum Keeper"
+   * Title Earned: "StatefulSet Healer"
+
+  You've learned that StatefulSets maintain order even in chaos:
+   - Pods have stable, persistent identities (cassandra-0, cassandra-1, ...)
+   - Each pod keeps its PersistentVolumeClaim across restarts
+   - Scaling up rebuilds pods with their original data intact
+   - Perfect for databases requiring stable network IDs and storage
+
+  Scale with: kubectl scale statefulset cassandra --replicas=3
+
+hints:
+  - "Use 'kubectl get statefulsets' to see current replica count (short: sts)"
+  - "Check pod status with 'kubectl get pods' - notice the ordinal naming"
+  - "Scale with 'kubectl scale statefulset cassandra --replicas=3'"
+  - "StatefulSet pods come back with same names and volumes"
+  - "Watch the pods with 'kubectl get pods -w' to see ordered deployment"

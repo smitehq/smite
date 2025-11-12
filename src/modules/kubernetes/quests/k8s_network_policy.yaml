@@ -1,0 +1,66 @@
+id: k8s_network_policy
+title: "The Network Lockdown"
+description: "Implement NetworkPolicies to secure pod-to-pod communication."
+difficulty: expert
+
+intro_text: |
+  By default, all pods can talk to all pods. The network is wide open,
+  a security nightmare waiting to happen.
+
+  Your database pods are exposed to every service in the cluster. The
+  frontend can reach the internal API. Random jobs can query payment
+  services. It's chaos.
+
+  The security team has issued a mandate: LOCK IT DOWN.
+
+  Only the backend pods (app=backend) should reach the database pods
+  (app=database) on port 5432. Nothing else. No exceptions.
+
+  You must create a NetworkPolicy that:
+  1. Selects database pods (app=database)
+  2. Denies all ingress traffic by default
+  3. Allows ingress ONLY from backend pods on port 5432
+
+  The database awaits its fortress walls.
+
+condition:
+  type: resource_exists
+  resource: networkpolicy
+  name: database-firewall
+
+reward_xp: 150
+
+completion_message: |
+  The NetworkPolicy descends like an iron curtain! The database pods
+  are now protected, accessible only to authorized backend services.
+
+  Random pods attempting connection are met with silence. Timeout.
+  Connection refused. The walls hold strong.
+
+  Only pods bearing the sacred label "app=backend" can pass through
+  the gateway on port 5432.
+
+  REWARDS:
+   * +150 Experience Points
+   * Achievement Unlocked: "Network Guardian"
+   * Title Earned: "Security Architect"
+   * Bonus: "Zero Trust Practitioner"
+
+  You've learned that NetworkPolicies provide:
+   - Pod-level firewall rules
+   - Ingress and egress traffic control
+   - Label-based traffic selection
+   - Default deny capabilities
+
+  Remember: NetworkPolicies require a CNI plugin that supports them
+  (Calico, Cilium, Weave Net). Not all clusters have this power.
+
+hints:
+  - "Use 'kubectl get networkpolicies' to see policies (short: netpol)"
+  - "NetworkPolicies are namespaced resources"
+  - "They use podSelector to choose which pods to apply rules to"
+  - "Empty podSelector {} means 'select all pods in namespace'"
+  - "If no policies select a pod, all traffic is allowed (default allow)"
+  - "Once a policy selects a pod, that pod becomes 'isolated'"
+  - "You must explicitly allow traffic with 'ingress' rules"
+  - "Example: kubectl create -f networkpolicy.yaml"

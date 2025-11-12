@@ -1,0 +1,117 @@
+cluster:
+  name: ingress-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: web-app-7d9f8c
+          status: Running
+          restarts: 0
+          image: mycompany/web-app:v2.1
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "Web application started on port 80"
+            - timestamp: "2025-11-11T10:00:05"
+              message: "ERROR: No traffic received - Ingress not routing to us!"
+            - timestamp: "2025-11-11T10:00:10"
+              message: "WARNING: Customers seeing admin panel instead of main site"
+          events: []
+
+        - name: api-service-5c8a2b
+          status: Running
+          restarts: 0
+          image: mycompany/api:v1.5
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:01:00"
+              message: "API service listening on port 8080"
+            - timestamp: "2025-11-11T10:01:05"
+              message: "ERROR: /api requests not reaching us - check Ingress!"
+            - timestamp: "2025-11-11T10:01:10"
+              message: "CRITICAL: API endpoint unreachable from outside"
+          events: []
+
+    - name: worker-2
+      ip: 10.244.0.11
+      pods:
+        - name: admin-panel-9f3d7e
+          status: Running
+          restarts: 0
+          image: mycompany/admin:v1.0
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:02:00"
+              message: "Admin panel started on port 3000"
+            - timestamp: "2025-11-11T10:02:05"
+              message: "WARNING: Receiving traffic from example.com/ (should be admin.example.com only!)"
+            - timestamp: "2025-11-11T10:02:10"
+              message: "SECURITY ALERT: Public users accessing admin interface!"
+          events:
+            - type: Warning
+              reason: SecurityBreach
+              message: "Admin panel exposed to public via incorrect Ingress routing"
+              timestamp: "2025-11-11T10:01:00"
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: web-app
+      replicas: 2
+      ready_replicas: 2
+      available_replicas: 2
+      image: mycompany/web-app:v2.1
+
+    - name: api-service
+      replicas: 3
+      ready_replicas: 3
+      available_replicas: 3
+      image: mycompany/api:v1.5
+
+    - name: admin-panel
+      replicas: 1
+      ready_replicas: 1
+      available_replicas: 1
+      image: mycompany/admin:v1.0
+
+  services:
+    - name: web-app
+      type: ClusterIP
+      cluster_ip: 10.96.0.100
+      ports:
+        - "80:80/TCP"
+      selector:
+        app: web
+
+    - name: api-service
+      type: ClusterIP
+      cluster_ip: 10.96.0.101
+      ports:
+        - "8080:8080/TCP"
+      selector:
+        app: api
+
+    - name: admin-panel
+      type: ClusterIP
+      cluster_ip: 10.96.0.102
+      ports:
+        - "3000:3000/TCP"
+      selector:
+        app: admin
+
+  ingresses:
+    - name: main-ingress
+      rules:
+        # BROKEN: All routes point to admin-panel!
+        - host: example.com
+          path: /
+          service_name: admin-panel
+          service_port: 3000
+        - host: example.com
+          path: /api
+          service_name: admin-panel
+          service_port: 3000
+        - host: admin.example.com
+          path: /
+          service_name: admin-panel
+          service_port: 3000

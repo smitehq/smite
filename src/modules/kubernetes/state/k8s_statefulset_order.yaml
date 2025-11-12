@@ -1,0 +1,45 @@
+cluster:
+  name: cassandra-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: cassandra-0
+          status: Running
+          restarts: 0
+          image: cassandra:4.0
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "Cassandra node cassandra-0 started"
+            - timestamp: "2025-11-11T10:00:05"
+              message: "ERROR: QUORUM LOST - Need at least 2 of 3 nodes"
+            - timestamp: "2025-11-11T10:00:10"
+              message: "WARN: Cluster in degraded state, writes disabled"
+            - timestamp: "2025-11-11T10:00:15"
+              message: "INFO: Waiting for cassandra-1 and cassandra-2 to rejoin..."
+          events:
+            - type: Warning
+              reason: QuorumLost
+              message: "StatefulSet scaled down to 1 replica - quorum lost"
+              timestamp: "2025-11-11T09:55:00"
+
+    - name: worker-2
+      ip: 10.244.0.11
+      pods: []
+
+    - name: worker-3
+      ip: 10.244.0.12
+      pods: []
+
+  secrets: []
+  configmaps: []
+  deployments: []
+  services:
+    - name: cassandra
+      type: ClusterIP
+      cluster_ip: None  # Headless service for StatefulSet
+      ports:
+        - "9042:9042/TCP"
+      selector:
+        app: cassandra

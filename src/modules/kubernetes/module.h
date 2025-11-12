@@ -89,6 +89,20 @@ struct Service {
     std::string age = "0s";
 };
 
+struct IngressRule {
+    std::string host;
+    std::string path;
+    std::string service_name;
+    int service_port;
+};
+
+struct Ingress {
+    std::string name;
+    std::string ns = "default";
+    std::vector<IngressRule> rules;
+    std::string age = "0s";
+};
+
 struct Cluster {
     std::string name;
     std::vector<Node> nodes;
@@ -123,6 +137,7 @@ private:
     std::vector<ConfigMap> configmaps;
     std::vector<Deployment> deployments;
     std::vector<Service> services;
+    std::vector<Ingress> ingresses;
     YAML::Node default_state_yaml;
     std::string active_quest_id;
     std::unordered_map<std::string, YAML::Node> quest_data;  // quest_id -> quest YAML

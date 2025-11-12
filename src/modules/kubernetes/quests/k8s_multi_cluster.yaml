@@ -1,0 +1,67 @@
+id: k8s_multi_cluster
+title: "The Desynchronized Replicas"
+description: "Fix a deployment that's scaled differently across DR clusters."
+difficulty: expert
+
+intro_text: |
+  INCIDENT REPORT: Your disaster recovery setup is compromised.
+
+  During last night's load test, someone scaled the payment-service deployment
+  to 10 replicas in the primary cluster (us-east). The test is over, but
+  they forgot to scale it back down.
+
+  Now payment-service runs with 10 replicas in us-east, but only 3 in the
+  DR cluster (eu-west). Your clusters are DESYNCHRONIZED.
+
+  If a failover happens now, the EU cluster will be crushed under load.
+  Three replicas cannot handle traffic meant for ten. Customers will face
+  errors. Revenue will be lost.
+
+  Your kubectl is currently pointed at the wrong cluster (staging). You must:
+  1. Switch context to prod-us-east
+  2. Scale payment-service down to 3 replicas (matching DR)
+  3. Verify both clusters now match
+
+  Time is critical. Synchronize the clusters before disaster strikes.
+
+# Quest requires scaling the deployment in the current cluster
+condition:
+  type: deployment_replicas
+  deployment: payment-service
+  min_replicas: 3
+  max_replicas: 3
+
+reward_xp: 140
+
+completion_message: |
+  CLUSTERS SYNCHRONIZED! The payment-service deployment now runs 3 replicas
+  in both us-east and eu-west.
+
+  Your DR setup is safe again. If failover occurs, both clusters can handle
+  the load equally. The infrastructure team breathes easier.
+
+  REWARDS:
+   * +140 Experience Points
+   * Achievement Unlocked: "Cluster Harmonizer"
+   * Title Earned: "Multi-Cluster Operator"
+   * Legendary Item: "The Context Sword"
+
+  You've learned about multi-cluster operations:
+   - Contexts let you manage multiple clusters from one kubectl
+   - kubectl config get-contexts shows all available clusters
+   - kubectl config use-context <name> switches clusters
+   - Always verify which cluster you're operating on!
+   - DR clusters must mirror production config
+
+  Pro tips:
+   - Use kubectx tool for faster switching: kubectx prod-us-east
+   - Check current context: kubectl config current-context
+   - Deploy to multiple clusters: scripts or GitOps (ArgoCD, Flux)
+
+hints:
+  - "Check current context with 'kubectl config current-context'"
+  - "List all contexts with 'kubectl config get-contexts'"
+  - "Switch to prod-us-east with 'kubectl config use-context prod-us-east'"
+  - "Check deployment with 'kubectl get deployment payment-service'"
+  - "Scale down with 'kubectl scale deployment payment-service --replicas=3'"
+  - "The * in get-contexts shows your active cluster"

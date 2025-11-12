@@ -1,0 +1,79 @@
+id: k8s_ingress_routing
+title: "The Broken Gateway"
+description: "Fix a misconfigured Ingress that's routing all traffic to the wrong service."
+difficulty: advanced
+
+intro_text: |
+  PRODUCTION OUTAGE! Your Ingress is catastrophically misconfigured.
+
+  Users trying to reach example.com/ are being sent to the admin-panel
+  instead of the web-app. Confused customers see admin dashboards. Security
+  alarms are ringing. The CEO is on the phone.
+
+  The current Ingress routes EVERYTHING to admin-panel service. Both the
+  main site (example.com/) and the API (example.com/api) are broken.
+
+  Your mission: Edit the Ingress to fix the routing rules:
+   - example.com/ should route to web-app service (port 80)
+   - example.com/api should route to api-service (port 8080)
+   - admin.example.com/ should stay with admin-panel (port 3000)
+
+  The Ingress is named "main-ingress". Edit it. Save production.
+
+# Validation rules for editing the Ingress
+edit_validations:
+  - type: yaml_field_changed
+    path: spec.rules[0].http.paths[0].backend.service.name
+    old_value: admin-panel
+    new_pattern: "web-app"
+    on_success:
+      feedback: "Main route fixed! example.com/ now routes to web-app correctly."
+      actions:
+        - type: update_ingress_status
+          ingress: main-ingress
+          status: healthy
+    on_failure:
+      feedback: "The main route still points to the wrong service. Check spec.rules[0].http.paths[0].backend.service.name"
+
+condition:
+  type: ingress_routes_correctly
+  ingress: main-ingress
+  required_routes:
+    - host: example.com
+      path: /
+      service: web-app
+    - host: example.com
+      path: /api
+      service: api-service
+
+reward_xp: 120
+
+completion_message: |
+  The Ingress is FIXED! Traffic flows to the correct services:
+
+  example.com/ → web-app (customers see the right site!)
+  example.com/api → api-service (API calls succeed!)
+  admin.example.com/ → admin-panel (admins-only, as intended)
+
+  The alarms silence. Users flood back in. Crisis averted.
+
+  REWARDS:
+   * +120 Experience Points
+   * Achievement Unlocked: "Traffic Surgeon"
+   * Title Earned: "Ingress Fixer"
+
+  You've learned about Ingress routing:
+   - Host-based routing (different domains → different services)
+   - Path-based routing (same domain, different paths → different services)
+   - Edit Ingress with: kubectl edit ingress main-ingress
+   - Ingress controllers read these rules and configure load balancers
+
+  Pro tip: Use 'kubectl describe ingress' to verify your routing rules!
+
+hints:
+  - "Check current Ingress config with 'kubectl get ingress main-ingress -o yaml'"
+  - "Edit with 'kubectl edit ingress main-ingress'"
+  - "Look for spec.rules[].http.paths[].backend.service.name"
+  - "The main path (/) should route to 'web-app' service on port 80"
+  - "The /api path should route to 'api-service' on port 8080"
+  - "Verify with 'kubectl describe ingress main-ingress'"

@@ -1,0 +1,58 @@
+cluster:
+  name: security-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: database-0
+          status: Running
+          restarts: 0
+          image: postgres:14
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "PostgreSQL database system is ready to accept connections"
+            - timestamp: "2025-11-11T10:00:05"
+              message: "WARNING: Database is accessible from ALL pods in the cluster"
+            - timestamp: "2025-11-11T10:00:06"
+              message: "Security team recommends implementing NetworkPolicy"
+          events: []
+
+        - name: backend-app
+          status: Running
+          restarts: 0
+          image: myapp/backend:v1
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:01:00"
+              message: "Backend service started"
+            - timestamp: "2025-11-11T10:01:05"
+              message: "Connected to database successfully"
+          events: []
+
+    - name: worker-2
+      ip: 10.244.0.11
+      pods:
+        - name: frontend-web
+          status: Running
+          restarts: 0
+          image: nginx:latest
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:02:00"
+              message: "Frontend started"
+            - timestamp: "2025-11-11T10:02:05"
+              message: "WARNING: Can reach database directly (security violation!)"
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments: []
+  services:
+    - name: database
+      type: ClusterIP
+      cluster_ip: 10.96.0.50
+      ports:
+        - "5432:5432/TCP"
+      selector:
+        app: database
