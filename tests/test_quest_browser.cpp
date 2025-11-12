@@ -24,7 +24,7 @@ int tests_failed = 0;
 
 #define ASSERT_EQ(actual, expected) \
     if ((actual) != (expected)) { \
-        throw std::runtime_error(std::string("Expected: ") + std::to_string(expected) + ", Got: " + std::to_string(actual)); \
+        throw std::runtime_error(std::string("Expected: ") + std::to_string(static_cast<int>(expected)) + ", Got: " + std::to_string(static_cast<int>(actual))); \
     }
 
 #define ASSERT_STR_EQ(actual, expected) \
@@ -45,6 +45,20 @@ int tests_failed = 0;
 #define ASSERT_GT(actual, min_value) \
     if ((actual) <= (min_value)) { \
         throw std::runtime_error(std::string("Expected value > ") + std::to_string(min_value) + ", Got: " + std::to_string(actual)); \
+    }
+
+#define ASSERT_DIFFICULTY_EQ(actual, expected) \
+    if ((actual) != (expected)) { \
+        auto diff_to_str = [](QuestDifficulty d) -> std::string { \
+            switch (d) { \
+                case QuestDifficulty::BEGINNER: return "BEGINNER"; \
+                case QuestDifficulty::INTERMEDIATE: return "INTERMEDIATE"; \
+                case QuestDifficulty::ADVANCED: return "ADVANCED"; \
+                case QuestDifficulty::EXPERT: return "EXPERT"; \
+                default: return "UNKNOWN"; \
+            } \
+        }; \
+        throw std::runtime_error(std::string("Expected difficulty: ") + diff_to_str(expected) + ", Got: " + diff_to_str(actual)); \
     }
 
 int main() {
@@ -82,7 +96,7 @@ int main() {
         ASSERT_TRUE(quest != nullptr);
         ASSERT_STR_EQ(quest->id, "k8s_first_steps");
         ASSERT_STR_EQ(quest->title, "First Steps in Kubernetes");
-        ASSERT_EQ(quest->difficulty, QuestDifficulty::BEGINNER);
+        ASSERT_DIFFICULTY_EQ(quest->difficulty, QuestDifficulty::BEGINNER);
         ASSERT_EQ(quest->reward_xp, 25);
         std::cout << "Quest: " << quest->title << " (" << quest->reward_xp << " XP)\n";
     END_TEST()
