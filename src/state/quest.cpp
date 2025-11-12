@@ -24,6 +24,13 @@ void QuestManager::load_all_quests() {
             q.description = qyaml["description"].as<std::string>();
             q.intro_text = qyaml["intro_text"].as<std::string>("");
 
+            // Load difficulty
+            std::string diff = qyaml["difficulty"].as<std::string>("beginner");
+            if (diff == "beginner") q.difficulty = QuestDifficulty::BEGINNER;
+            else if (diff == "intermediate") q.difficulty = QuestDifficulty::INTERMEDIATE;
+            else if (diff == "advanced") q.difficulty = QuestDifficulty::ADVANCED;
+            else if (diff == "expert") q.difficulty = QuestDifficulty::EXPERT;
+
             // Load hints
             if (qyaml["hints"] && qyaml["hints"].IsSequence()) {
                 for (const auto& hint : qyaml["hints"]) {
@@ -39,7 +46,7 @@ void QuestManager::load_all_quests() {
     }
 }
 
-std::vector<Quest> QuestManager::get_quests_for_module(const std::string& mod) {
+std::vector<Quest> QuestManager::get_quests_for_module(const std::string& mod) const {
     return quests_by_module.count(mod) ? quests_by_module.at(mod) : std::vector<Quest>{};
 }
 
@@ -175,4 +182,60 @@ std::string QuestManager::quest_accomplished(const std::string& completion_messa
     // celebration << "\n";
 
     return celebration.str();
+}
+
+std::string QuestManager::list_all_quests_grouped() const {
+    std::ostringstream oss;
+    
+    auto diff_to_str = [](QuestDifficulty diff) -> std::string {
+        switch (diff) {
+            case QuestDifficulty::BEGINNER: return "Beginner";
+            case QuestDifficulty::INTERMEDIATE: return "Intermediate";
+            case QuestDifficulty::ADVANCED: return "Advanced";
+            case QuestDifficulty::EXPERT: return "Expert";
+            default: return "Unknown";
+        }
+    };
+    
+    oss << "\n";
+    oss << "================================================================================\n";
+    oss << "                              QUEST BROWSER                                     \n";
+    oss << "================================================================================\n\n";
+    
+    for (const auto& [mod_name, quests] : quests_by_module) {
+        if (quests.empty()) continue;
+        
+        // Count quests by difficulty
+        std::map<QuestDifficulty, std::vector<const Quest*>> by_diff;
+        for (const auto& q : quests) {
+            by_diff[q.difficulty].push_back(&q);
+        }
+        
+        // Module header
+        oss << "  " << mod_name << " (" << quests.size() << " quests)\n";
+        oss << "  " << std::string(mod_name.length() + 10, '=') << "\n\n";
+        
+        // List by difficulty
+        for (auto diff : {QuestDifficulty::BEGINNER, QuestDifficulty::INTERMEDIATE, 
+                          QuestDifficulty::ADVANCED, QuestDifficulty::EXPERT}) {
+            if (by_diff.count(diff) == 0 || by_diff[diff].empty()) continue;
+            
+            oss << "    " << diff_to_str(diff) << " (" << by_diff[diff].size() << "):\n";
+            for (const auto* q : by_diff[diff]) {
+                std::string status = "";
+                if (is_active(mod_name, q->id)) {
+                    status = " [ACTIVE]";
+                }
+                oss << "      - " << q->id << ": " << q->title << " [" << q->reward_xp << " XP]" << status << "\n";
+            }
+            oss << "\n";
+        }
+        
+        oss << "\n";
+    }
+    
+    oss << "Use 'quest activate <module> <quest_id>' to start a quest\n";
+    oss << "Use 'hint' during a quest to get guidance\n\n";
+    
+    return oss.str();
 }

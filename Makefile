@@ -52,6 +52,11 @@ test-shell: build/tests/test_shell.o $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) build/tests/test_shell.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_shell.exe $(LDFLAGS)
 	./build/tests/test_shell.exe
 
+# Quest Browser Test (specific standalone test)
+test-quest-browser: build/tests/test_quest_browser.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_quest_browser.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_quest_browser.exe $(LDFLAGS)
+	./build/tests/test_quest_browser.exe
+
 build/tests/%.o: tests/%.cpp
 	$(MKDIR) -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -86,4 +91,4 @@ show-sources:
 	@echo "Source files:"
 	@echo $(SRC_SRCS) | tr ' ' '\n'
 
-.PHONY: clean test distcheck dist show-sources test-k8s-quest
+.PHONY: clean test distcheck dist show-sources test-k8s-quest test-shell test-quest-browser

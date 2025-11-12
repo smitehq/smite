@@ -5,6 +5,13 @@
 #include <vector>
 #include <yaml-cpp/yaml.h>
 
+enum class QuestDifficulty {
+    BEGINNER,
+    INTERMEDIATE,
+    ADVANCED,
+    EXPERT
+};
+
 struct Quest {
     std::string id;
     std::string title;
@@ -13,6 +20,7 @@ struct Quest {
     std::vector<std::string> hints;  // Progressive hints
     YAML::Node condition;
     int reward_xp;
+    QuestDifficulty difficulty = QuestDifficulty::BEGINNER;
 };
 
 class QuestManager {
@@ -21,7 +29,7 @@ public:
 
     // Loading
     void load_all_quests();
-    std::vector<Quest> get_quests_for_module(const std::string& mod_name);
+    std::vector<Quest> get_quests_for_module(const std::string& mod_name) const;
     const Quest* get_quest(const std::string& mod_name, const std::string& quest_id) const;
 
     // Activation
@@ -41,6 +49,7 @@ public:
 
     // String helpers
     std::string list_quests(const std::string& mod_name) const;
+    std::string list_all_quests_grouped() const;  // List all quests grouped by module and difficulty
 
 private:
     std::string modules_dir;

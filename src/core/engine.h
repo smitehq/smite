@@ -37,6 +37,8 @@ public:
 
     // Quest access
     const QuestManager& get_quest_manager() const { return quests_; }
+    QuestManager& get_quest_manager_mutable() { return quests_; }
+    Router& get_router() { return router_; }
 
 private:
     std::string modules_dir_;

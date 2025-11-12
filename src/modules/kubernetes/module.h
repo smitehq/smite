@@ -127,6 +127,7 @@ private:
     std::string active_quest_id;
     std::unordered_map<std::string, YAML::Node> quest_data;  // quest_id -> quest YAML
     bool quest_completed = false;  // Track if current quest has been completed
+    std::string last_command_executed;  // Track last command for quest checking
 
     //--------------------------------------
     // Command registry

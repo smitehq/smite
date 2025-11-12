@@ -1,6 +1,7 @@
 id: k8s_node_drain
 title: "The Dying Node"
 description: "Safely evacuate pods from a failing node."
+difficulty: expert
 
 intro_text: |
   NODE FAILURE IMMINENT. Hardware alarms shriek. Disk errors multiply.

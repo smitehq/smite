@@ -1,6 +1,7 @@
 id: k8s_pod_inspection
 title: "The Art of Pod Inspection"
 description: "Master the ability to see all pods in your cluster."
+difficulty: beginner
 
 intro_text: |
   The cluster teems with life - pods running, waiting, sleeping in the

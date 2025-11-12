@@ -1,6 +1,7 @@
 id: k8s_imagepull_failure
 title: "The Image That Never Came"
 description: "Fix an ImagePullBackOff error preventing pod startup."
+difficulty: intermediate
 
 intro_text: |
   The frontend pod writhes in agony, stuck in an endless loop of failure.

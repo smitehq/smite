@@ -178,6 +178,40 @@ int main() {
         ASSERT_EQ(satisfied, true);
     END_TEST()
 
+    TEST("Activate k8s_first_steps quest")
+        bool activated = module->activate_quest("k8s_first_steps");
+        ASSERT_EQ(activated, true);
+    END_TEST()
+
+    TEST("kubectl version completes k8s_first_steps quest")
+        std::string output = module->run_command("kubectl version", {});
+        std::cout << "Output:\n" << output << "\n";
+        // Should show version info
+        ASSERT_STR_CONTAINS(output, "Client Version");
+        ASSERT_STR_CONTAINS(output, "Server Version");
+        // Should show quest completion
+        ASSERT_STR_CONTAINS(output, "QUEST COMPLETE!");
+        ASSERT_STR_CONTAINS(output, "+25 Experience Points");
+    END_TEST()
+
+    TEST("command_run condition evaluates correctly after running kubectl version")
+        YAML::Node condition;
+        condition["type"] = "command_run";
+        condition["command"] = "kubectl version";
+
+        bool satisfied = module->evaluate_condition(condition);
+        ASSERT_EQ(satisfied, true);
+    END_TEST()
+
+    TEST("command_run condition fails for unexecuted command")
+        YAML::Node condition;
+        condition["type"] = "command_run";
+        condition["command"] = "kubectl get nodes";
+
+        bool satisfied = module->evaluate_condition(condition);
+        ASSERT_EQ(satisfied, false);
+    END_TEST()
+
     // Print summary
     std::cout << "\n========================================\n";
     std::cout << "Test Summary\n";

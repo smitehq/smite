@@ -1,6 +1,7 @@
 id: k8s_rollout_disaster
 title: "Rollout Gone Wrong"
 description: "Perform an emergency rollback of a failed deployment."
+difficulty: expert
 
 intro_text: |
   PRODUCTION IS DOWN. The new deployment was supposed to be routine -

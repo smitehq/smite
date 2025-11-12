@@ -265,8 +265,28 @@ bool KubernetesModule::supports_command(const std::string& cmdPrefix) const {
 
 std::string KubernetesModule::run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) {
     auto it = command_registry.find(cmdPrefix);
-    if (it != command_registry.end()) return it->second(args);
-    return "Command supported but not implemented in module\n";
+    if (it == command_registry.end()) {
+        return "Command supported but not implemented in module\n";
+    }
+
+    // Store the full command that was executed (for quest checking)
+    last_command_executed = cmdPrefix;
+    if (!args.empty()) {
+        for (const auto& arg : args) {
+            last_command_executed += " " + arg;
+        }
+    }
+
+    // Execute the command
+    std::string result = it->second(args);
+
+    // Check if this command completes the active quest
+    std::string quest_completion = check_quest_completion();
+    if (!quest_completion.empty()) {
+        result += "\n" + quest_completion;
+    }
+
+    return result;
 }
 
 bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
@@ -278,6 +298,10 @@ bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
         auto it = find_pod(name);
         if (it == pods.end()) return false;
         return it->status == expect;
+    }
+    else if (t == "command_run") {
+        std::string expected_cmd = conditionSpec["command"].as<std::string>();
+        return last_command_executed == expected_cmd;
     }
     return false;
 }

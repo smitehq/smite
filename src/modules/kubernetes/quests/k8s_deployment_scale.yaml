@@ -1,6 +1,7 @@
 id: k8s_deployment_scale
 title: "The Scaling Challenge"
 description: "Scale a deployment to handle increased load."
+difficulty: intermediate
 
 intro_text: |
   The api deployment strains under crushing load. A single replica cannot

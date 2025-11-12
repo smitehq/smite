@@ -1,6 +1,7 @@
 id: k8s_first_steps
 title: "First Steps in Kubernetes"
 description: "Learn basic kubectl commands and explore your first cluster."
+difficulty: beginner
 
 intro_text: |
   Welcome, brave adventurer, to the realm of Kubernetes - where containers

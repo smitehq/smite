@@ -1,6 +1,7 @@
 id: k8s_affinity_failure
 title: "The Unschedulable Pod"
 description: "Fix pod affinity rules preventing scheduling."
+difficulty: advanced
 
 intro_text: |
   The cache pod exists in a state of limbo - created but never scheduled.

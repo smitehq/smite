@@ -1,6 +1,7 @@
 id: k8s_resource_quota
 title: "Quota Exceeded"
 description: "Work around resource quota limits preventing pod creation."
+difficulty: advanced
 
 intro_text: |
   The namespace strains against invisible walls - resource quotas that

@@ -9,6 +9,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "state/quest.h"
+#include "state/quest_browser.h"
 
 namespace fs = std::filesystem;
 
@@ -75,12 +76,56 @@ Engine::Engine(const std::string& modulesDir)
 
     register_command("quests", [this](const auto& args) -> std::string {
         if (args.size() < 2) {
-            std::ostringstream oss;
-            for (const auto& mod : router_.get_modules()) {
-                if (quests_.get_quests_for_module(mod->name()).empty()) continue;
-                oss << mod->name() << ":\n" << quests_.list_quests(mod->name());
+            // Launch interactive TUI browser
+            QuestBrowser browser(quests_, router_);
+            std::string selected = browser.launch();
+
+            if (selected.empty()) {
+                return "";  // Cancelled
             }
-            return oss.str();
+
+            // Parse module:quest_id
+            size_t colon_pos = selected.find(':');
+            if (colon_pos == std::string::npos) {
+                return "Error: Invalid quest selection\n";
+            }
+
+            std::string mod = selected.substr(0, colon_pos);
+            std::string quest_id = selected.substr(colon_pos + 1);
+
+            // Activate the quest
+            const Quest* quest = quests_.get_quest(mod, quest_id);
+            if (!quest) {
+                return "Quest not found.\n";
+            }
+
+            if (!quests_.activate_quest(mod, quest_id)) {
+                return "Failed to activate quest.\n";
+            }
+
+            auto mod_ptr = router_.get_module_by_name(mod);
+            if (!mod_ptr) {
+                return fmt::format("Module not found: {}\n", mod);
+            }
+            mod_ptr->activate_quest(quest_id);
+
+            // Display epic quest activation message
+            std::string output = "\n";
+            output += "========================================================================\n";
+            output += "                   ** QUEST ACTIVATED **                               \n";
+            output += "========================================================================\n";
+            output += "\n";
+            output += fmt::format("  >> {}\n", fmt::styled(quest->title, globals::style::header));
+            output += "  ----------------------------------------------------------------------\n";
+            output += "\n";
+
+            if (!quest->intro_text.empty()) {
+                output += quest->intro_text + "\n\n";
+            }
+
+            output += "  Use 'hint' if you need guidance.\n\n";
+
+            return output;
         }
 
         const auto& mod = args[1];
