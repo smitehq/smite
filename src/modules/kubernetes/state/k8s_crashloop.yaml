@@ -55,3 +55,49 @@ cluster:
       age: "10d"
       data:
         api_key: "frontend-api-key-value"
+
+# Simulation: Describes the ongoing crash cycle in this broken state
+simulation:
+  enabled: true
+  tick_rate: 10
+
+  rules:
+    - name: "crashloop_restart_cycle"
+      trigger:
+        type: interval
+        every: 8s
+      conditions:
+        - type: pod_status
+          pod: backend
+          status: CrashLoopBackOff
+      actions:
+        - type: increment_restarts
+          pod: backend
+          max: 999
+
+        - type: add_event
+          pod: backend
+          event:
+            type: Warning
+            reason: BackOff
+            message: "Back-off restarting failed container"
+
+    - name: "crashloop_error_logs"
+      trigger:
+        type: interval
+        every: 2s
+      conditions:
+        - type: pod_status
+          pod: backend
+          status: CrashLoopBackOff
+      actions:
+        - type: cycle_logs
+          pod: backend
+          messages:
+            - "Backend service initializing..."
+            - "Loading configuration..."
+            - "Attempting to connect to database..."
+            - "ERROR: Failed to load database credentials"
+            - "ERROR: Secret 'db-secret' not found"
+            - "FATAL: Cannot start without database access"
+            - "[Container Exit Code: 1]"

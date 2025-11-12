@@ -49,3 +49,54 @@ cluster:
       liveness_initial_delay: 5  # Too short - app needs at least 10s to start
       liveness_timeout: 1  # Too aggressive - should be at least 3s
   services: []
+
+# Simulation: Describes how this broken cluster state evolves over time
+simulation:
+  enabled: true
+  tick_rate: 10
+
+  rules:
+    - name: "liveness_probe_restart_loop"
+      trigger:
+        type: interval
+        every: 12s
+      conditions:
+        - type: pod_status
+          pod: monitor
+          status: CrashLoopBackOff
+      actions:
+        - type: increment_restarts
+          pod: monitor
+          max: 999
+
+        - type: add_event
+          pod: monitor
+          event:
+            type: Warning
+            reason: Unhealthy
+            message: "Liveness probe failed: Get http://10.244.0.10:8080/health: dial tcp: connection refused"
+
+        - type: add_event
+          pod: monitor
+          event:
+            type: Normal
+            reason: Killing
+            message: "Container monitor failed liveness probe, will be restarted"
+
+    - name: "liveness_probe_log_cycle"
+      trigger:
+        type: interval
+        every: 3s
+      conditions:
+        - type: pod_status
+          pod: monitor
+          status: CrashLoopBackOff
+      actions:
+        - type: cycle_logs
+          pod: monitor
+          messages:
+            - "Monitor application starting..."
+            - "Initializing metrics collectors..."
+            - "Loading configuration (slow operation)..."
+            - "Almost ready to serve traffic..."
+            - "[KILLED BY KUBELET - Liveness probe timeout]"

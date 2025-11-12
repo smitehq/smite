@@ -1,4 +1,5 @@
 #include "module.h"
+#include "simulation.h"
 #include "shell/nano.h"
 #include "state/quest.h"
 #include <yaml-cpp/yaml.h>
@@ -304,6 +305,35 @@ bool KubernetesModule::activate_quest(const std::string& quest_id) {
 
     active_quest_id = quest_id;
     quest_completed = false;  // Reset completion flag
+
+    // Load simulation configuration from state YAML (not quest YAML!)
+    // Simulation describes the behavior of the broken cluster state
+    if (fs::exists(quest_state_path)) {
+        try {
+            YAML::Node state = YAML::LoadFile(quest_state_path.string());
+            if (state["simulation"]) {
+                simulation_config_ = std::make_unique<k8s_simulation::SimulationConfig>(
+                    k8s_simulation::SimulationConfig::parse(state["simulation"])
+                );
+
+                // Start simulation if enabled
+                start_simulation();
+            } else {
+                // No simulation config in state, ensure simulation is stopped
+                stop_simulation();
+                simulation_config_.reset();
+            }
+        } catch (const std::exception& e) {
+            std::cout << "Warning: Failed to load simulation config: " << e.what() << "\n";
+            stop_simulation();
+            simulation_config_.reset();
+        }
+    } else {
+        // No state file, stop simulation
+        stop_simulation();
+        simulation_config_.reset();
+    }
+
     return true;
 }
 
@@ -399,6 +429,9 @@ bool KubernetesModule::supports_command(const std::string& cmdPrefix) const {
 }
 
 std::string KubernetesModule::run_command(const std::string& cmdPrefix, const std::vector<std::string>& args) {
+    // Lock state mutex to prevent race conditions with simulation thread
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
     auto it = command_registry.find(cmdPrefix);
     if (it == command_registry.end()) {
         return "Command supported but not implemented in module\n";
@@ -1015,6 +1048,9 @@ std::string KubernetesModule::check_quest_completion() {
     if (evaluate_condition(quest["condition"])) {
         quest_completed = true;
 
+        // Stop simulation when quest completes
+        stop_simulation();
+
         // Get the completion message from YAML
         std::string completion_msg = "Quest completed!";
         if (quest["completion_message"]) {
@@ -1026,6 +1062,88 @@ std::string KubernetesModule::check_quest_completion() {
     }
 
     return "";  // Quest not yet complete
+}
+
+// ========================================
+// Simulation System
+// ========================================
+
+KubernetesModule::~KubernetesModule() {
+    stop_simulation();
+}
+
+void KubernetesModule::start_simulation() {
+    // Stop any existing simulation
+    stop_simulation();
+
+    // Check if simulation is enabled in quest
+    if (!simulation_config_ || !simulation_config_->enabled) {
+        return;
+    }
+
+    // Reset quest start time
+    quest_start_time_ = std::chrono::steady_clock::now();
+
+    // Reset all rule timers
+    for (auto& rule : simulation_config_->rules) {
+        rule.reset();
+    }
+
+    // Start simulation thread
+    simulation_running_ = true;
+    simulation_thread_ = std::thread(&KubernetesModule::simulation_loop, this);
+}
+
+void KubernetesModule::stop_simulation() {
+    if (simulation_running_) {
+        simulation_running_ = false;
+        if (simulation_thread_.joinable()) {
+            simulation_thread_.join();
+        }
+    }
+}
+
+void KubernetesModule::simulation_loop() {
+    using namespace std::chrono;
+
+    const float tick_interval = simulation_config_->get_tick_interval();
+    const auto tick_duration = duration_cast<milliseconds>(duration<float>(tick_interval));
+
+    auto last_tick = steady_clock::now();
+
+    while (simulation_running_) {
+        auto now = steady_clock::now();
+        auto elapsed = duration_cast<milliseconds>(now - last_tick);
+        float delta_time = elapsed.count() / 1000.0f;
+
+        if (delta_time >= tick_interval) {
+            float quest_elapsed = get_elapsed_time();
+
+            // Lock state for the entire tick to ensure consistency
+            {
+                std::lock_guard<std::mutex> lock(state_mutex_);
+
+                // Execute each rule
+                for (auto& rule : simulation_config_->rules) {
+                    if (rule.should_execute(quest_elapsed, delta_time)) {
+                        rule.execute(this, delta_time);
+                    }
+                }
+            }
+
+            last_tick = now;
+        }
+
+        // Sleep for a short time to avoid busy-waiting
+        std::this_thread::sleep_for(milliseconds(10));
+    }
+}
+
+float KubernetesModule::get_elapsed_time() const {
+    using namespace std::chrono;
+    auto now = steady_clock::now();
+    auto elapsed = duration_cast<milliseconds>(now - quest_start_time_);
+    return elapsed.count() / 1000.0f;
 }
 
 // Factory

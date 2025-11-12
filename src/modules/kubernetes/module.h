@@ -12,6 +12,10 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <chrono>
 
 struct PodEvent {
     std::string type;       // e.g., "Warning" or "Normal"
@@ -144,10 +148,15 @@ struct Cluster {
     std::vector<Service> services;
 };
 
+// Forward declaration for simulation
+namespace k8s_simulation {
+    struct SimulationConfig;
+}
+
 class KubernetesModule : public SmiteModule {
 public:
     KubernetesModule() = default;
-    ~KubernetesModule() override = default;
+    ~KubernetesModule() override;  // Need custom destructor to stop simulation thread
 
     //--------------------------------------
     // SmiteModule interface
@@ -178,6 +187,20 @@ private:
     std::unordered_map<std::string, YAML::Node> quest_data;  // quest_id -> quest YAML
     bool quest_completed = false;  // Track if current quest has been completed
     std::string last_command_executed;  // Track last command for quest checking
+
+    //--------------------------------------
+    // Simulation system
+    //--------------------------------------
+    std::unique_ptr<k8s_simulation::SimulationConfig> simulation_config_;
+    std::thread simulation_thread_;
+    std::atomic<bool> simulation_running_{false};
+    mutable std::mutex state_mutex_;  // Protects all cluster state (nodes, pods, deployments, etc.)
+    std::chrono::steady_clock::time_point quest_start_time_;
+
+    void start_simulation();
+    void stop_simulation();
+    void simulation_loop();
+    float get_elapsed_time() const;
 
     //--------------------------------------
     // Command registry
@@ -230,6 +253,10 @@ public:
     auto pod_end() -> decltype(pods.end());
     auto secret_end() -> decltype(secrets.end());
     int random_usage(int max);
+
+    // Simulation helpers (public for simulation.cpp)
+    bool is_quest_completed() const { return quest_completed; }
+    std::mutex& get_state_mutex() { return state_mutex_; }
 };
 
 #endif // MODULES_KUBERNETES_MODULE_H

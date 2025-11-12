@@ -38,3 +38,49 @@ cluster:
       age: "15m"
       memory_limit: "256Mi"  # Too low - needs at least 512Mi
   services: []
+
+# Simulation: Describes the ongoing OOMKill cycle in this broken state
+simulation:
+  enabled: true
+  tick_rate: 10
+
+  rules:
+    - name: "oomkill_restart_cycle"
+      trigger:
+        type: interval
+        every: 10s
+      conditions:
+        - type: pod_status
+          pod: worker
+          status: CrashLoopBackOff
+      actions:
+        - type: increment_restarts
+          pod: worker
+          max: 999
+
+        - type: add_event
+          pod: worker
+          event:
+            type: Warning
+            reason: BackOff
+            message: "Back-off restarting failed container worker in pod worker"
+
+    - name: "oomkill_log_progression"
+      trigger:
+        type: interval
+        every: 2s
+      conditions:
+        - type: pod_status
+          pod: worker
+          status: CrashLoopBackOff
+      actions:
+        - type: cycle_logs
+          pod: worker
+          messages:
+            - "Worker starting, loading large dataset into memory..."
+            - "Allocating memory for data processing..."
+            - "Processing 10GB dataset..."
+            - "Memory usage: 220MB / 256MB"
+            - "Memory usage: 248MB / 256MB"
+            - "Memory usage: 255MB / 256MB [WARNING: Near limit!]"
+            - "[KILLED - Out of Memory (exit code 137)]"
