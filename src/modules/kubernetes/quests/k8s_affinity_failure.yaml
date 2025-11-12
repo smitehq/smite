@@ -1,0 +1,42 @@
+id: k8s_affinity_failure
+title: "The Unschedulable Pod"
+description: "Fix pod affinity rules preventing scheduling."
+
+intro_text: |
+  The cache pod exists in a state of limbo - created but never scheduled.
+  It waits for a node that meets its impossible demands, affinity rules
+  so strict that no node can satisfy them.
+
+  "0/3 nodes are available: 3 node(s) didn't match pod affinity rules"
+
+  The pod demands to be co-located with pods that don't exist. It requires
+  node labels that were never applied. It asks for the impossible.
+
+  You must relax these constraints or fix the cluster to satisfy them.
+  The pod deserves to run.
+
+condition:
+  type: pod_status
+  pod: cache
+  status: Running
+
+reward_xp: 125
+
+completion_message: |
+  The scheduler finds a home for the cache pod! Affinity rules satisfied,
+  constraints met, the pod lands gracefully on a suitable node.
+
+  REWARDS:
+   * +125 Experience Points
+   * Achievement Unlocked: "Scheduler Whisperer"
+   * Title Earned: "Affinity Master"
+
+  You've learned that pod affinity is powerful but dangerous. Too strict
+  and nothing schedules. Too loose and you lose the benefits.
+
+hints:
+  - "Use 'kubectl describe pod cache' to see scheduling failures"
+  - "Check the affinity rules in the pod or deployment spec"
+  - "You may need to label nodes with 'kubectl label node <name> key=value'"
+  - "Or edit the deployment to relax the affinity constraints"
+  - "Consider using preferredDuringSchedulingIgnoredDuringExecution"

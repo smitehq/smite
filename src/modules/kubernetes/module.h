@@ -59,10 +59,43 @@ struct Secret {
     std::string age = "0s";  // How long the secret has existed
 };
 
+struct ConfigMap {
+    std::string name;
+    std::string ns = "default";
+    std::unordered_map<std::string, std::string> data;  // key-value pairs
+    std::string age = "0s";
+};
+
+struct Deployment {
+    std::string name;
+    std::string ns = "default";
+    int replicas = 1;
+    int ready_replicas = 0;
+    int available_replicas = 0;
+    std::string image;
+    std::string age = "0s";
+    std::unordered_map<std::string, std::string> labels;
+    int revision = 1;  // For rollout history
+};
+
+struct Service {
+    std::string name;
+    std::string ns = "default";
+    std::string type = "ClusterIP";  // ClusterIP, NodePort, LoadBalancer
+    std::string cluster_ip;
+    std::string external_ip = "<none>";
+    std::vector<std::string> ports;  // "80:8080/TCP"
+    std::unordered_map<std::string, std::string> selector;
+    std::string age = "0s";
+};
+
 struct Cluster {
     std::string name;
     std::vector<Node> nodes;
     std::vector<Secret> secrets;
+    std::vector<ConfigMap> configmaps;
+    std::vector<Deployment> deployments;
+    std::vector<Service> services;
 };
 
 class KubernetesModule : public SmiteModule {
@@ -87,6 +120,9 @@ private:
     std::vector<Pod> pods;
     std::vector<Node> nodes;
     std::vector<Secret> secrets;
+    std::vector<ConfigMap> configmaps;
+    std::vector<Deployment> deployments;
+    std::vector<Service> services;
     YAML::Node default_state_yaml;
     std::string active_quest_id;
     std::unordered_map<std::string, YAML::Node> quest_data;  // quest_id -> quest YAML
@@ -126,6 +162,12 @@ public:
     std::vector<Node>& get_nodes_mutable() { return nodes; }
     const std::vector<Secret>& get_secrets() const { return secrets; }
     void add_secret(const Secret& secret) { secrets.push_back(secret); }
+    const std::vector<ConfigMap>& get_configmaps() const { return configmaps; }
+    void add_configmap(const ConfigMap& cm) { configmaps.push_back(cm); }
+    const std::vector<Deployment>& get_deployments() const { return deployments; }
+    std::vector<Deployment>& get_deployments_mutable() { return deployments; }
+    const std::vector<Service>& get_services() const { return services; }
+    void add_service(const Service& svc) { services.push_back(svc); }
     std::string check_secret_trigger(const std::string& secret_name);
 
     // Helper methods (public for command headers)

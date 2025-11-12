@@ -1,0 +1,41 @@
+id: k8s_configmap_fix
+title: "The Missing Configuration"
+description: "Create a ConfigMap that an application desperately needs."
+
+intro_text: |
+  The config-consumer pod starts with hope in its heart, but quickly
+  realizes something is terribly wrong. It searches for a ConfigMap
+  named "app-config" but finds only void.
+
+  Without configuration, the application cannot function. It doesn't know
+  which database to connect to, which features to enable, which secrets
+  to unlock.
+
+  It crashes. It restarts. It crashes again.
+
+  You must create the missing ConfigMap. Give the application the guidance
+  it needs to thrive.
+
+condition:
+  type: resource_exists
+  resource: configmap
+  name: app-config
+
+reward_xp: 75
+
+completion_message: |
+  The ConfigMap materializes like an answered prayer! The config-consumer
+  pod reads its values and understands, at last, what it must do.
+
+  REWARDS:
+   * +75 Experience Points
+   * Achievement Unlocked: "Configuration Wizard"
+   * Title Earned: "ConfigMap Creator"
+
+  You've learned that configuration is separate from code - and ConfigMaps
+  are how we inject configuration into our pods.
+
+hints:
+  - "Use 'kubectl get configmaps' to see existing ConfigMaps"
+  - "Create one with 'kubectl create configmap app-config --from-literal=key=value'"
+  - "ConfigMaps store configuration data as key-value pairs"

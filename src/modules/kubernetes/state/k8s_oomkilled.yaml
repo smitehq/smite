@@ -1,0 +1,39 @@
+cluster:
+  name: prod-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: worker
+          status: CrashLoopBackOff
+          restarts: 12
+          image: memory-hog:v1
+          container_state: waiting
+          last_state:
+            reason: OOMKilled
+            exit_code: 137
+            started: "2025-11-11T10:00:00"
+            finished: "2025-11-11T10:00:15"
+          events:
+            - type: Warning
+              reason: BackOff
+              message: "Back-off restarting failed container"
+              timestamp: "2025-11-11T10:05:00"
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "Worker starting, loading large dataset into memory..."
+            - timestamp: "2025-11-11T10:00:10"
+              message: "Processing 10GB dataset..."
+            - timestamp: "2025-11-11T10:00:14"
+              message: "Memory usage: 248MB / 256MB"
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: worker
+      replicas: 1
+      ready_replicas: 0
+      available_replicas: 0
+      image: memory-hog:v1
+      age: "15m"
+  services: []

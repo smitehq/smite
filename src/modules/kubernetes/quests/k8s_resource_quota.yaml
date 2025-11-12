@@ -1,0 +1,42 @@
+id: k8s_resource_quota
+title: "Quota Exceeded"
+description: "Work around resource quota limits preventing pod creation."
+
+intro_text: |
+  The namespace strains against invisible walls - resource quotas that
+  constrain what can be created. You attempt to deploy more pods but the
+  API server laughs at your hubris.
+
+  "exceeded quota: pods-medium, requested: pods=1, used: pods=10, limited: pods=10"
+
+  You've hit the ceiling. The namespace is full. No more pods can be born
+  until something dies or the quota is raised.
+
+  You must make a choice: Clean up unused resources, or petition the gods
+  (cluster admins) for more quota.
+
+condition:
+  type: deployment_ready
+  deployment: batch-processor
+  min_replicas: 1
+
+reward_xp: 115
+
+completion_message: |
+  Space opens up in the namespace! The new deployment slides into existence,
+  fitting perfectly within the quota constraints.
+
+  REWARDS:
+   * +115 Experience Points
+   * Achievement Unlocked: "Quota Negotiator"
+   * Title Earned: "Resource Manager"
+
+  You've learned that namespaces have limits, and exceeding them blocks
+  creation. Always monitor quota usage in production.
+
+hints:
+  - "Check current quota with 'kubectl get resourcequota'"
+  - "See what's consuming resources with 'kubectl top pods'"
+  - "You may need to delete unused pods or deployments"
+  - "Or scale down other deployments to make room"
+  - "Use 'kubectl delete deployment <name>' carefully"

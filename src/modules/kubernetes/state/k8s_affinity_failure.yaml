@@ -1,0 +1,35 @@
+cluster:
+  name: prod-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: redis-master
+          status: Running
+          restarts: 0
+          image: redis:6
+          container_state: running
+          logs: []
+          events: []
+
+    - name: worker-2
+      ip: 10.244.0.11
+      pods: []
+
+    - name: worker-3
+      ip: 10.244.0.12
+      pods: []
+
+  # Cache pod is pending - cannot find nodes matching affinity rules
+  # It wants to be co-located with redis-master but affinity rules are too strict
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: cache
+      replicas: 1
+      ready_replicas: 0
+      available_replicas: 0
+      image: memcached:1.6
+      age: "10m"
+  services: []

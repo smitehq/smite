@@ -1,0 +1,37 @@
+id: k8s_first_steps
+title: "First Steps in Kubernetes"
+description: "Learn basic kubectl commands and explore your first cluster."
+
+intro_text: |
+  Welcome, brave adventurer, to the realm of Kubernetes - where containers
+  dance in orchestrated harmony and clusters pulse with digital life.
+
+  Before you can tame the mighty beasts of distributed systems, you must
+  first learn to see. To observe. To understand.
+
+  Your journey begins with a simple question: What version of kubectl
+  commands this domain?
+
+  Speak the words of power: "kubectl version"
+
+condition:
+  type: command_run
+  command: "kubectl version"
+
+reward_xp: 25
+
+completion_message: |
+  The ancient CLI whispers its secrets to you! You have taken your first
+  step into a larger world.
+
+  REWARDS:
+   * +25 Experience Points
+   * Achievement Unlocked: "Cluster Initiate"
+   * Title Earned: "Version Seeker"
+
+  The path ahead is long, but you have proven you can wield the kubectl
+  blade. The cluster awaits your mastery.
+
+hints:
+  - "Type 'kubectl version' to see the client and server versions."
+  - "This command shows you're connected to the cluster."

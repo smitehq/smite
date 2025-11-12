@@ -1,0 +1,39 @@
+cluster:
+  name: prod-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: frontend
+          status: ImagePullBackOff
+          restarts: 3
+          image: nginx:broken-tag
+          container_state: waiting
+          last_state:
+            reason: Error
+            exit_code: 1
+            started: "2025-11-11T10:00:00"
+            finished: "2025-11-11T10:00:01"
+          events:
+            - type: Warning
+              reason: Failed
+              message: "Failed to pull image 'nginx:broken-tag': rpc error: code = Unknown desc = Error response from daemon: manifest for nginx:broken-tag not found"
+              timestamp: "2025-11-11T10:00:01"
+            - type: Warning
+              reason: BackOff
+              message: "Back-off pulling image 'nginx:broken-tag'"
+              timestamp: "2025-11-11T10:01:30"
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "Error: Failed to pull image"
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: frontend
+      replicas: 1
+      ready_replicas: 0
+      available_replicas: 0
+      image: nginx:broken-tag
+      age: "5m"
+  services: []

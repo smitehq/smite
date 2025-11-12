@@ -1,0 +1,37 @@
+cluster:
+  name: prod-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: config-consumer
+          status: CrashLoopBackOff
+          restarts: 8
+          image: myapp:v1
+          container_state: waiting
+          last_state:
+            reason: Error
+            exit_code: 1
+            started: "2025-11-11T10:00:00"
+            finished: "2025-11-11T10:00:02"
+          events:
+            - type: Warning
+              reason: Failed
+              message: "Error: ConfigMap 'app-config' not found"
+              timestamp: "2025-11-11T10:00:02"
+            - type: Warning
+              reason: BackOff
+              message: "Back-off restarting failed container"
+              timestamp: "2025-11-11T10:02:00"
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "Application starting..."
+            - timestamp: "2025-11-11T10:00:01"
+              message: "Loading configuration from ConfigMap 'app-config'..."
+            - timestamp: "2025-11-11T10:00:02"
+              message: "FATAL: ConfigMap 'app-config' not found - cannot proceed"
+
+  secrets: []
+  configmaps: []
+  deployments: []
+  services: []

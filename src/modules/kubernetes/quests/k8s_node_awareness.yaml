@@ -1,0 +1,36 @@
+id: k8s_node_awareness
+title: "Know Your Nodes"
+description: "Discover the compute nodes that power your cluster."
+
+intro_text: |
+  A cluster is nothing without its nodes - the mighty workers that carry
+  the burden of your workloads. They toil endlessly, executing containers,
+  managing networks, storing data.
+
+  But how many serve under your command? What are their names? What
+  resources do they possess?
+
+  You must take inventory of your army. List the nodes that comprise
+  your domain.
+
+condition:
+  type: command_run
+  command: "kubectl get nodes"
+
+reward_xp: 40
+
+completion_message: |
+  The nodes stand at attention! Each one ready to serve, each one a pillar
+  supporting your distributed empire.
+
+  REWARDS:
+   * +40 Experience Points
+   * Achievement Unlocked: "Node Commander"
+   * Title Earned: "Infrastructure Aware"
+
+  You now understand the foundation upon which everything rests. Nodes are
+  the bedrock of your cluster - treat them well.
+
+hints:
+  - "Use 'kubectl get nodes' to see all compute nodes in your cluster."
+  - "Nodes are where your pods actually run - know them well!"

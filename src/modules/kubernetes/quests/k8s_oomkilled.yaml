@@ -1,0 +1,41 @@
+id: k8s_oomkilled
+title: "Death by Memory"
+description: "Rescue a pod that's being OOMKilled due to insufficient memory."
+
+intro_text: |
+  The worker pod gasps for breath, for memory, for life itself. But it is
+  given too little to survive. The OOMKiller stalks it relentlessly,
+  terminating it again and again as it exceeds its meager allocation.
+
+  Exit code 137. The mark of the OOMKiller. The signature of memory starvation.
+
+  You must increase its memory limits, give it room to breathe, allow it
+  to process without the sword of Damocles hanging over its head.
+
+  Edit the deployment. Grant it more memory. Save its life.
+
+condition:
+  type: pod_status
+  pod: worker
+  status: Running
+
+reward_xp: 90
+
+completion_message: |
+  The worker pod takes a deep breath as memory floods its container!
+  No longer does it live on the edge of death. It processes in peace.
+
+  REWARDS:
+   * +90 Experience Points
+   * Achievement Unlocked: "Memory Guardian"
+   * Title Earned: "Resource Optimizer"
+
+  You've learned that pods need resources to survive - and you control
+  their fate. Use your power wisely.
+
+hints:
+  - "Check the pod's status with 'kubectl describe pod worker'"
+  - "Look for OOMKilled in the last state or events"
+  - "You need to increase the memory limit in the deployment"
+  - "Use 'kubectl edit deployment worker' to adjust resources"
+  - "Set memory limits to at least 512Mi or more"

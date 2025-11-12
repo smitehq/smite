@@ -1,0 +1,89 @@
+cluster:
+  name: production-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: auth-service-7f8d9c-xk2mp
+          status: CrashLoopBackOff
+          restarts: 25
+          image: auth-service:v1
+          container_state: waiting
+          last_state:
+            reason: OOMKilled
+            exit_code: 137
+            started: "2025-11-11T10:00:00"
+            finished: "2025-11-11T10:00:45"
+          events:
+            - type: Warning
+              reason: BackOff
+              message: "Back-off restarting failed container"
+              timestamp: "2025-11-11T10:05:00"
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "Auth service starting..."
+            - timestamp: "2025-11-11T10:00:30"
+              message: "WARNING: Memory usage at 95% - possible leak detected"
+            - timestamp: "2025-11-11T10:00:44"
+              message: "ERROR: Out of memory"
+
+    - name: worker-2
+      ip: 10.244.0.11
+      pods:
+        - name: api-9b7c4d-zm8vw
+          status: CrashLoopBackOff
+          restarts: 18
+          image: api-server:v1
+          container_state: waiting
+          last_state:
+            reason: OOMKilled
+            exit_code: 137
+          events: []
+          logs:
+            - timestamp: "2025-11-11T10:01:00"
+              message: "API server started"
+            - timestamp: "2025-11-11T10:02:00"
+              message: "Retrying auth service connection... attempt 1000/∞"
+            - timestamp: "2025-11-11T10:03:00"
+              message: "ERROR: Connection pool exhausted - auth service unavailable"
+
+    - name: worker-3
+      ip: 10.244.0.12
+      pods:
+        - name: web-5c8f7b-pk4rt
+          status: Running
+          restarts: 8
+          image: web-frontend:v1
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:03:00"
+              message: "WARNING: API timeouts increasing"
+            - timestamp: "2025-11-11T10:04:00"
+              message: "ERROR: 503 Service Unavailable from API"
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: auth-service
+      replicas: 1
+      ready_replicas: 0
+      available_replicas: 0
+      image: auth-service:v1
+      age: "2h"
+
+    - name: api
+      replicas: 2
+      ready_replicas: 0
+      available_replicas: 0
+      image: api-server:v1
+      age: "2h"
+
+    - name: web
+      replicas: 1
+      ready_replicas: 1
+      available_replicas: 1
+      image: web-frontend:v1
+      age: "2h"
+
+  services: []

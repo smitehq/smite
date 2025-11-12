@@ -1,0 +1,34 @@
+id: k8s_pod_inspection
+title: "The Art of Pod Inspection"
+description: "Master the ability to see all pods in your cluster."
+
+intro_text: |
+  The cluster teems with life - pods running, waiting, sleeping in the
+  digital ether. But they remain invisible to those who do not know
+  the sacred incantations.
+
+  You must learn to pull back the veil, to see what lurks within the
+  namespaces. Only then can you begin to understand the chaos... or order.
+
+  Speak the command that reveals all pods in the default namespace.
+
+condition:
+  type: command_run
+  command: "kubectl get pods"
+
+reward_xp: 30
+
+completion_message: |
+  The pods reveal themselves! Their names, their statuses, their secrets
+  laid bare before your eyes.
+
+  REWARDS:
+   * +30 Experience Points
+   * Achievement Unlocked: "Pod Whisperer"
+
+  You can now see the heartbeat of the cluster. Each pod a cell in the
+  vast organism that is your distributed application.
+
+hints:
+  - "Use 'kubectl get pods' to list all pods in the default namespace."
+  - "This is one of the most fundamental kubectl commands you'll use."

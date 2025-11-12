@@ -1,0 +1,28 @@
+cluster:
+  name: tutorial-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: backend
+          status: Running
+          restarts: 0
+          image: my-app:v1
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "Application starting..."
+            - timestamp: "2025-11-11T10:00:05"
+              message: "Database connection established"
+            - timestamp: "2025-11-11T10:00:10"
+              message: "Server listening on port 8080"
+            - timestamp: "2025-11-11T10:01:00"
+              message: "Received request: GET /api/health"
+            - timestamp: "2025-11-11T10:01:01"
+              message: "Health check passed"
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments: []
+  services: []

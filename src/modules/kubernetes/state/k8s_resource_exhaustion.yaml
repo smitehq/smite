@@ -1,0 +1,108 @@
+cluster:
+  name: production-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: app-1
+          status: Running
+          restarts: 0
+          image: myapp:v1
+          container_state: running
+          logs: []
+          events: []
+
+        - name: app-2
+          status: Running
+          restarts: 0
+          image: myapp:v1
+          container_state: running
+          logs: []
+          events: []
+
+        - name: app-3
+          status: Running
+          restarts: 0
+          image: myapp:v1
+          container_state: running
+          logs: []
+          events: []
+
+    - name: worker-2
+      ip: 10.244.0.11
+      pods:
+        - name: dev-test-1
+          status: Running
+          restarts: 0
+          image: test-runner:latest
+          container_state: running
+          logs:
+            - timestamp: "2025-11-09T10:00:00"
+              message: "Development test pod - not critical"
+          events: []
+
+        - name: dev-test-2
+          status: Running
+          restarts: 0
+          image: test-runner:latest
+          container_state: running
+          logs:
+            - timestamp: "2025-11-09T10:00:00"
+              message: "Development test pod - not critical"
+          events: []
+
+        - name: legacy-service
+          status: Running
+          restarts: 0
+          image: legacy:old
+          container_state: running
+          logs:
+            - timestamp: "2025-10-01T10:00:00"
+              message: "Legacy service - rarely used"
+          events: []
+
+    - name: worker-3
+      ip: 10.244.0.12
+      pods:
+        - name: experimental-1
+          status: Running
+          restarts: 0
+          image: experimental:latest
+          container_state: running
+          logs:
+            - timestamp: "2025-11-10T10:00:00"
+              message: "Experimental feature - can be stopped"
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: myapp
+      replicas: 3
+      ready_replicas: 3
+      available_replicas: 3
+      image: myapp:v1
+      age: "10d"
+
+    - name: dev-test
+      replicas: 2
+      ready_replicas: 2
+      available_replicas: 2
+      image: test-runner:latest
+      age: "2d"
+
+    - name: legacy-service
+      replicas: 1
+      ready_replicas: 1
+      available_replicas: 1
+      image: legacy:old
+      age: "90d"
+
+    - name: experimental
+      replicas: 1
+      ready_replicas: 1
+      available_replicas: 1
+      image: experimental:latest
+      age: "3d"
+
+  services: []

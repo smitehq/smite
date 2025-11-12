@@ -1,0 +1,39 @@
+id: k8s_persistent_storage
+title: "Data in the Ether"
+description: "Solve a persistent volume mounting issue."
+
+intro_text: |
+  The database pod awakens but finds itself... empty. Hollow. Without memory.
+  It searches for its persistent volume, the place where its precious data
+  should reside, but finds nothing mounted.
+
+  PersistentVolumeClaim in Pending state. No volume satisfies the claim.
+  The database cannot start without storage - it would be building on sand.
+
+  You must investigate the PVC. Check the storage class. Verify the capacity.
+  Ensure a volume is bound and mounted before the database can live.
+
+condition:
+  type: pvc_status
+  pvc: database-pvc
+  status: Bound
+
+reward_xp: 120
+
+completion_message: |
+  The PersistentVolume binds to the claim! Storage materializes from the
+  void. The database pod mounts its volume and finds... its data intact!
+
+  REWARDS:
+   * +120 Experience Points
+   * Achievement Unlocked: "Storage Savant"
+   * Title Earned: "Data Guardian"
+
+  You've learned that in Kubernetes, storage is a first-class resource.
+  Persistent volumes outlive pods - data survives restarts.
+
+hints:
+  - "Use 'kubectl get pvc' to see PersistentVolumeClaims"
+  - "Check 'kubectl get pv' for available PersistentVolumes"
+  - "The capacity and access modes must match between PV and PVC"
+  - "Storage classes help automate volume provisioning"

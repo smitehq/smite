@@ -1,0 +1,37 @@
+cluster:
+  name: tutorial-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: web-app
+          status: Running
+          restarts: 0
+          image: nginx:1.21
+          container_state: running
+          logs: []
+          events: []
+
+    - name: worker-2
+      ip: 10.244.0.11
+      pods:
+        - name: api-server
+          status: Running
+          restarts: 0
+          image: node:16
+          container_state: running
+          logs: []
+          events: []
+
+        - name: database
+          status: Running
+          restarts: 2
+          image: postgres:14
+          container_state: running
+          logs: []
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments: []
+  services: []

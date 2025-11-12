@@ -1,0 +1,39 @@
+id: k8s_deployment_scale
+title: "The Scaling Challenge"
+description: "Scale a deployment to handle increased load."
+
+intro_text: |
+  The api deployment strains under crushing load. A single replica cannot
+  handle the tsunami of requests crashing against its shores.
+
+  Users wait. Timeouts accumulate. The system groans.
+
+  You have the power to multiply this pod, to create replicas that share
+  the burden. Horizontal scaling - the ancient art of adding more workers
+  instead of making one worker stronger.
+
+  Scale the api deployment to 5 replicas. Distribute the load. Save the day.
+
+condition:
+  type: deployment_replicas
+  deployment: api
+  min_replicas: 5
+
+reward_xp: 70
+
+completion_message: |
+  The api deployment spawns additional replicas like cells dividing! The load
+  distributes across 5 healthy pods. Response times plummet. Users rejoice.
+
+  REWARDS:
+   * +70 Experience Points
+   * Achievement Unlocked: "Scale Master"
+   * Title Earned: "Load Balancer"
+
+  You've learned that sometimes more is better than bigger. Horizontal
+  scaling is your friend.
+
+hints:
+  - "Use 'kubectl get deployments' to see current replica counts"
+  - "Scale with 'kubectl scale deployment api --replicas=5'"
+  - "Check the result with 'kubectl get pods' to see the new replicas"

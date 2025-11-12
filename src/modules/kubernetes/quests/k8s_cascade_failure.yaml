@@ -1,0 +1,61 @@
+id: k8s_cascade_failure
+title: "The Cascade"
+description: "Stop a cascading failure before it takes down the entire system."
+
+intro_text: |
+  It started with one pod. The auth-service. A simple memory leak, slowly
+  growing over hours. Then it OOMKilled. Restarted. Killed again.
+
+  But now... it's spreading.
+
+  The auth failures caused the api pods to retry aggressively. The retries
+  exhausted their memory. Now they're OOMKilling too.
+
+  The api failures are cascading to the web tier. Timeouts everywhere.
+  Connection pools exhausted. Each tier pulling down the next like
+  dominoes falling.
+
+  You must identify the root cause - the first domino. Then scale it,
+  fix it, restart it, ANYTHING to stop the cascade before the entire
+  production cluster collapses into chaos.
+
+  The monitoring graphs look like a heart attack.
+
+condition:
+  type: multi_pod_health
+  pods:
+    - auth-service
+    - api
+    - web
+  all_healthy: true
+
+reward_xp: 180
+
+completion_message: |
+  You found it! The auth-service memory leak. One quick scale-up to give
+  it breathing room, then a proper fix to the deployment.
+
+  The auth pods stabilize. The api pods stop retrying frantically. The
+  web tier catches its breath. Slowly, gracefully, the system returns
+  to normal.
+
+  The cascade stops. The dominoes stand upright again.
+
+  SYSTEM SAVED.
+
+  REWARDS:
+   * +180 Experience Points
+   * Achievement Unlocked: "Cascade Breaker"
+   * Title Earned: "System Savior"
+   * Legendary Item: "The Circuit Breaker"
+
+  You've learned that failures cascade. Finding the root cause under
+  pressure is the ultimate test of a production engineer.
+
+hints:
+  - "Check which pods are failing first with 'kubectl get pods'"
+  - "Look at restart counts to find the original failure"
+  - "Describe pods to see OOMKilled events"
+  - "Scale up the root cause deployment as a quick fix"
+  - "Use 'kubectl scale deployment auth-service --replicas=5'"
+  - "Then investigate and fix the actual memory leak"

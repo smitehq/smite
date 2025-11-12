@@ -1,0 +1,33 @@
+cluster:
+  name: tutorial-cluster
+  nodes:
+    - name: control-plane
+      ip: 10.244.0.1
+      pods:
+        - name: etcd
+          status: Running
+          restarts: 0
+          image: etcd:3.5.0
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "etcd server is running"
+          events: []
+
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: nginx-demo
+          status: Running
+          restarts: 0
+          image: nginx:latest
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:05:00"
+              message: "Started nginx successfully"
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments: []
+  services: []

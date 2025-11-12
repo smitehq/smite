@@ -1,0 +1,42 @@
+id: k8s_service_discovery
+title: "The Lost Connection"
+description: "Fix service discovery issues preventing pod communication."
+
+intro_text: |
+  The web pod calls out into the darkness, trying to reach the api service.
+  But its cries echo unanswered in the void.
+
+  "Connection refused" - the cruelest of errors. The service exists, the
+  pods are healthy, yet they cannot find each other in the vast cluster.
+
+  Service discovery has failed. The DNS lies. The endpoints are empty.
+  Something is fundamentally broken in the fabric of your cluster networking.
+
+  You must investigate the service. Check its endpoints. Verify its selector.
+  Restore the connection between pods.
+
+condition:
+  type: service_has_endpoints
+  service: api
+  min_endpoints: 1
+
+reward_xp: 110
+
+completion_message: |
+  The service suddenly sees its pods! Endpoints populate. DNS resolves.
+  The web pod's requests finally reach their destination!
+
+  REWARDS:
+   * +110 Experience Points
+   * Achievement Unlocked: "Service Healer"
+   * Title Earned: "Networking Ninja"
+
+  You've learned that services are only as good as their selectors. Labels
+  must match or the magic fails.
+
+hints:
+  - "Check the service with 'kubectl get services'"
+  - "Describe the service to see its selector and endpoints"
+  - "Use 'kubectl get pods --show-labels' to see pod labels"
+  - "The service selector must match pod labels exactly"
+  - "You may need to edit the service or redeploy pods with correct labels"

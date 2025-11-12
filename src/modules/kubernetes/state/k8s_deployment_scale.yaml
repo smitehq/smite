@@ -1,0 +1,39 @@
+cluster:
+  name: prod-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: api-7f8d9c5b-xk2mp
+          status: Running
+          restarts: 0
+          image: api-server:v2
+          container_state: running
+          logs:
+            - timestamp: "2025-11-11T10:00:00"
+              message: "API server started"
+            - timestamp: "2025-11-11T10:05:00"
+              message: "WARNING: Request queue at 95% capacity"
+            - timestamp: "2025-11-11T10:06:00"
+              message: "WARNING: Response time degraded to 2.5s"
+            - timestamp: "2025-11-11T10:07:00"
+              message: "ERROR: Timeouts increasing - need more capacity!"
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: api
+      replicas: 1
+      ready_replicas: 1
+      available_replicas: 1
+      image: api-server:v2
+      age: "2h"
+  services:
+    - name: api
+      type: ClusterIP
+      cluster_ip: 10.96.0.50
+      external_ip: "<none>"
+      ports:
+        - "8080:8080/TCP"
+      age: "2h"

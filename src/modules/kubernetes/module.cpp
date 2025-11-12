@@ -22,6 +22,12 @@
 #include "commands/top_pods.h"
 #include "commands/get_events.h"
 #include "commands/edit_deployment.h"
+#include "commands/get_deployments.h"
+#include "commands/get_services.h"
+#include "commands/get_configmaps.h"
+#include "commands/scale.h"
+#include "commands/rollout.h"
+#include "commands/cordon.h"
 
 namespace fs = std::filesystem;
 
@@ -168,10 +174,17 @@ bool KubernetesModule::activate_quest(const std::string& quest_id) {
 
 void KubernetesModule::register_builtin_commands() {
     using namespace kubectl_commands;
+    using namespace k8s_commands;
 
     // Template register_command automatically passes 'this' to command factories
     register_command("kubectl version", cmd_version);
     register_command("kubectl get pods", cmd_get_pods);
+    register_command("kubectl get deployments", cmd_get_deployments);
+    register_command("kubectl get deploy", cmd_get_deployments);  // alias
+    register_command("kubectl get services", cmd_get_services);
+    register_command("kubectl get svc", cmd_get_services);  // alias
+    register_command("kubectl get configmaps", cmd_get_configmaps);
+    register_command("kubectl get cm", cmd_get_configmaps);  // alias
     register_command("kubectl logs", cmd_logs);
     register_command("kubectl describe pod", cmd_describe_pod);
     register_command("kubectl delete pod", cmd_delete_pod);
@@ -183,6 +196,11 @@ void KubernetesModule::register_builtin_commands() {
     register_command("kubectl top pods", cmd_top_pods);
     register_command("kubectl get events", cmd_get_events);
     register_command("kubectl edit deployment", cmd_edit_deployment);
+    register_command("kubectl scale deployment", cmd_scale);
+    register_command("kubectl scale deploy", cmd_scale);  // alias
+    register_command("kubectl rollout", cmd_rollout);
+    register_command("kubectl cordon", cmd_cordon);
+    register_command("kubectl uncordon", cmd_uncordon);
 }
 
 auto KubernetesModule::find_pod(const std::string& pod_name) -> decltype(pods.begin()) {

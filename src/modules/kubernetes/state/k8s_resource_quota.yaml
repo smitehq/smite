@@ -1,0 +1,63 @@
+cluster:
+  name: prod-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.10
+      pods:
+        - name: app-1
+          status: Running
+          restarts: 0
+          image: myapp:v1
+          container_state: running
+          logs: []
+          events: []
+
+        - name: app-2
+          status: Running
+          restarts: 0
+          image: myapp:v1
+          container_state: running
+          logs: []
+          events: []
+
+        - name: app-3
+          status: Running
+          restarts: 0
+          image: myapp:v1
+          container_state: running
+          logs: []
+          events: []
+
+    - name: worker-2
+      ip: 10.244.0.11
+      pods:
+        - name: old-test-1
+          status: Running
+          restarts: 0
+          image: test:old
+          container_state: running
+          logs:
+            - timestamp: "2025-11-10T10:00:00"
+              message: "Old test pod - can be deleted"
+          events: []
+
+        - name: old-test-2
+          status: Running
+          restarts: 0
+          image: test:old
+          container_state: running
+          logs:
+            - timestamp: "2025-11-10T10:00:00"
+              message: "Old test pod - can be deleted"
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: old-test
+      replicas: 2
+      ready_replicas: 2
+      available_replicas: 2
+      image: test:old
+      age: "5d"
+  services: []

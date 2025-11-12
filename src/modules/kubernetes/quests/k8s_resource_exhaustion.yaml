@@ -1,0 +1,56 @@
+id: k8s_resource_exhaustion
+title: "The Cluster at Capacity"
+description: "Manage a cluster that's completely out of resources."
+
+intro_text: |
+  THE CLUSTER IS FULL. Every CPU cycle allocated. Every megabyte of
+  memory claimed. Nodes are at 100% capacity and screaming.
+
+  New pods sit in Pending state forever. "Insufficient CPU" they cry.
+  "Insufficient memory" the scheduler responds coldly.
+
+  But the business doesn't care about your capacity problems. They want
+  their new batch-processing deployment running NOW. The data pipeline
+  is backed up. Reports are late. Money is being lost.
+
+  You can't add nodes - this is a fixed cluster. You must make space.
+  You must prioritize. You must delete or scale down less critical
+  workloads to make room for what matters.
+
+  This is triage. This is Sophie's Choice. This is production.
+
+condition:
+  type: deployment_running
+  deployment: batch-processor
+  min_replicas: 3
+
+reward_xp: 175
+
+completion_message: |
+  You made the hard calls. You scaled down the dev environment. You killed
+  the test pods. You consolidated where you could.
+
+  Space opened up. Resources freed. The batch-processor deployment
+  finally scheduled and ran.
+
+  The pipeline processes. The reports generate. The business is happy.
+  (The developers are not, but that's a different problem.)
+
+  RESOURCES OPTIMIZED. PRIORITIES MAINTAINED.
+
+  REWARDS:
+   * +175 Experience Points
+   * Achievement Unlocked: "Resource Czar"
+   * Title Earned: "Capacity Planner"
+   * Epic Item: "The Optimizer's Lens"
+
+  You've learned that finite resources demand hard choices. Capacity
+  planning isn't glamorous, but it's essential.
+
+hints:
+  - "Check cluster resource usage with 'kubectl top nodes'"
+  - "See which pods are using the most with 'kubectl top pods'"
+  - "List all deployments to find candidates to scale down"
+  - "Use 'kubectl scale deployment <name> --replicas=0' to stop non-critical services"
+  - "Or delete deployments entirely if they're not needed"
+  - "Make room for the batch-processor deployment to run"

@@ -1,0 +1,37 @@
+id: k8s_reading_logs
+title: "Deciphering the Logs"
+description: "Learn to read pod logs and uncover their secrets."
+
+intro_text: |
+  Every pod whispers its story through logs - a stream of consciousness,
+  a digital diary of its brief existence. Success. Failure. Panic. Peace.
+
+  But these whispers are lost to those who cannot hear them.
+
+  A pod named "backend" speaks into the void. You must listen. You must
+  read its logs and understand its tale.
+
+  Use kubectl to peer into its soul.
+
+condition:
+  type: command_run
+  command: "kubectl logs backend"
+
+reward_xp: 35
+
+completion_message: |
+  The logs unfold before you like an ancient scroll! Every line a clue,
+  every error a cry for help, every success a small victory.
+
+  REWARDS:
+   * +35 Experience Points
+   * Achievement Unlocked: "Log Reader"
+   * Title Earned: "Debugger's Apprentice"
+
+  You have learned to listen. This skill will save you countless hours
+  in the battles to come.
+
+hints:
+  - "Use 'kubectl logs <pod-name>' to view a pod's output."
+  - "Try 'kubectl logs backend' to see what the backend pod is saying."
+  - "Logs are your best friend when debugging issues."

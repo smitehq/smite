@@ -1,0 +1,39 @@
+id: k8s_imagepull_failure
+title: "The Image That Never Came"
+description: "Fix an ImagePullBackOff error preventing pod startup."
+
+intro_text: |
+  The frontend pod writhes in agony, stuck in an endless loop of failure.
+  ImagePullBackOff - the dreaded error that speaks of images that cannot
+  be found, registries that cannot be reached, credentials that do not exist.
+
+  The pod reaches out desperately for an image called "nginx:broken-tag"
+  but finds only emptiness. The registry returns 404. The pod crashes.
+  The cycle repeats.
+
+  You must break the cycle. Find the problem. Fix the image reference.
+
+condition:
+  type: pod_status
+  pod: frontend
+  status: Running
+
+reward_xp: 80
+
+completion_message: |
+  The correct image flows into the pod like water into a desert! The
+  container springs to life, healthy and whole.
+
+  REWARDS:
+   * +80 Experience Points
+   * Achievement Unlocked: "Image Wrangler"
+   * Title Earned: "Registry Master"
+
+  You've learned that image names are sacred incantations - one wrong
+  character and the spell fails. Always verify your image tags!
+
+hints:
+  - "Check the pod's events with 'kubectl describe pod frontend'"
+  - "Look for the image being pulled - is it the correct tag?"
+  - "You may need to edit the deployment to fix the image reference."
+  - "Use 'kubectl edit deployment frontend' to change the image."

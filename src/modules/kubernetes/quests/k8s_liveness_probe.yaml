@@ -1,0 +1,41 @@
+id: k8s_liveness_probe
+title: "The Probe of Life"
+description: "Fix a failing liveness probe causing unnecessary restarts."
+
+intro_text: |
+  The monitor pod lives in eternal torment - killed by its own health check,
+  restarted by the kubelet, only to be killed again moments later.
+
+  The liveness probe is too aggressive. It checks too soon, times out too
+  quickly, fails too easily. The pod never gets a chance to prove its health.
+
+  Restart count: 47. Each restart a small death. Each death unnecessary.
+
+  You must fix the liveness probe. Give the pod time to start. Make the
+  checks more forgiving. Stop the endless cycle of death and rebirth.
+
+condition:
+  type: pod_restarts
+  pod: monitor
+  max_restarts: 0
+
+reward_xp: 105
+
+completion_message: |
+  The liveness probe finally reports success! The pod lives, truly lives,
+  without fear of being killed by overzealous health checks.
+
+  REWARDS:
+   * +105 Experience Points
+   * Achievement Unlocked: "Health Check Expert"
+   * Title Earned: "Probe Tuner"
+
+  You've learned that health checks are a double-edged sword. Too strict
+  and healthy pods die. Too lenient and sick pods linger.
+
+hints:
+  - "Check pod events with 'kubectl describe pod monitor'"
+  - "Look for 'Liveness probe failed' messages"
+  - "You need to edit the deployment's liveness probe settings"
+  - "Increase initialDelaySeconds to give the app time to start"
+  - "Adjust timeoutSeconds and failureThreshold to be more forgiving"

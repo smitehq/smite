@@ -1,0 +1,44 @@
+cluster:
+  name: production-cluster
+  nodes:
+    - name: control-plane-1
+      ip: 10.0.0.10
+      pods: []
+
+    - name: worker-1
+      ip: 10.0.1.10
+      pods:
+        - name: web-1
+          status: Running
+          restarts: 0
+          image: nginx:latest
+          container_state: running
+          logs: []
+          events: []
+
+    - name: worker-2
+      ip: 10.0.1.11
+      pods:
+        - name: api-1
+          status: Running
+          restarts: 0
+          image: node:16
+          container_state: running
+          logs: []
+          events: []
+
+    - name: worker-3
+      ip: 10.0.1.12
+      pods:
+        - name: database-1
+          status: Running
+          restarts: 0
+          image: postgres:14
+          container_state: running
+          logs: []
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments: []
+  services: []

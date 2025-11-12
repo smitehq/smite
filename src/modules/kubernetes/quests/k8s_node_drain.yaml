@@ -1,0 +1,49 @@
+id: k8s_node_drain
+title: "The Dying Node"
+description: "Safely evacuate pods from a failing node."
+
+intro_text: |
+  NODE FAILURE IMMINENT. Hardware alarms shriek. Disk errors multiply.
+  The node named "worker-2" is dying, and it's taking production pods
+  with it.
+
+  You can't just delete the node - that would kill the pods violently,
+  causing service disruption. You must be gentle, surgical, professional.
+
+  DRAIN the node. Evacuate the pods gracefully. Give them time to
+  terminate cleanly, to finish their requests, to say their goodbyes.
+
+  Then, and only then, can you cordon the node and mark it for maintenance.
+
+  The clock ticks. The node groans. Your fingers fly across the keyboard.
+
+condition:
+  type: node_cordoned
+  node: worker-2
+
+reward_xp: 160
+
+completion_message: |
+  The pods evacuate in an orderly fashion! Each one gracefully terminates,
+  then respawns on healthy nodes. Zero downtime. Perfect execution.
+
+  The dying node now sits empty, cordoned, ready for hardware maintenance.
+  No pods will schedule there until you uncordon it.
+
+  CRISIS AVERTED WITH GRACE.
+
+  REWARDS:
+   * +160 Experience Points
+   * Achievement Unlocked: "Graceful Operator"
+   * Title Earned: "Node Surgeon"
+   * Epic Item: "The Drain Pipe"
+
+  You've learned that how you handle failures matters as much as preventing
+  them. Graceful degradation is an art form.
+
+hints:
+  - "First, cordon the node to prevent new pods: 'kubectl cordon worker-2'"
+  - "Then drain it to evacuate existing pods (simulate with cordon for now)"
+  - "Check node status with 'kubectl get nodes'"
+  - "Verify pods moved with 'kubectl get pods -o wide'"
+  - "In a real cluster, drain would be 'kubectl drain worker-2 --ignore-daemonsets'"

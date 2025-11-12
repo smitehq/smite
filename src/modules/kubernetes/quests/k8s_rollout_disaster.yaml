@@ -1,0 +1,49 @@
+id: k8s_rollout_disaster
+title: "Rollout Gone Wrong"
+description: "Perform an emergency rollback of a failed deployment."
+
+intro_text: |
+  PRODUCTION IS DOWN. The new deployment was supposed to be routine -
+  a simple version bump, thoroughly tested in staging. But production
+  had other plans.
+
+  The new pods are CrashLoopBackOff. The old pods are gone, terminated
+  by the rolling update. Your application serves only 500 errors.
+
+  Users rage. Revenue bleeds. Your phone won't stop ringing.
+
+  There's no time to debug. No time to fix the root cause. You must
+  ROLLBACK immediately, restore the previous working version, stop
+  the bleeding.
+
+  Your hands shake as you reach for kubectl. One command stands between
+  you and disaster: rollout undo.
+
+condition:
+  type: deployment_rollout
+  deployment: payment-service
+  successful: true
+
+reward_xp: 150
+
+completion_message: |
+  The old pods surge back to life! The working version deploys. Health
+  checks pass. Traffic flows. The errors stop.
+
+  PRODUCTION IS RESTORED.
+
+  REWARDS:
+   * +150 Experience Points
+   * Achievement Unlocked: "Crisis Manager"
+   * Title Earned: "Rollback Hero"
+   * Legendary Item: "The Undo Button"
+
+  You've learned the most important lesson in production: Always have an
+  escape hatch. Rollbacks save lives (and jobs).
+
+hints:
+  - "Check the deployment status with 'kubectl rollout status deployment payment-service'"
+  - "See the rollout history with 'kubectl rollout history deployment payment-service'"
+  - "Rollback with 'kubectl rollout undo deployment payment-service'"
+  - "Verify the rollback succeeded with 'kubectl get pods'"
+  - "In production, speed matters more than perfection"
