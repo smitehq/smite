@@ -8,7 +8,7 @@ CXX := clang++
 VERSION := 0.1.0
 
 # Platform-specific settings
-ifeq ($(UNAME_S),Linux)
+ifeq ($(findstring Linux,$(UNAME_S)),Linux)
     # Linux
     TARGET := smite
     PLATFORM := linux-amd64
@@ -21,7 +21,7 @@ ifeq ($(UNAME_S),Linux)
     RM := rm
     TAR := tar
     EXE_SUFFIX :=
-else ifeq ($(UNAME_S),Darwin)
+else ifeq ($(findstring Darwin,$(UNAME_S)),Darwin)
     # macOS
     TARGET := smite
     PLATFORM := macos-amd64
@@ -67,8 +67,18 @@ SRC_OBJS := $(SRC_SRCS:src/%.cpp=build/src/%.o)
 TEST_OBJS := $(TEST_SRCS:tests/%.cpp=build/tests/%.o)
 
 # Core build
+ifneq ($(findstring MINGW,$(UNAME_S))$(findstring Windows,$(UNAME_S)),)
+$(TARGET): $(SRC_OBJS) $(RESOURCE_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+else
 $(TARGET): $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+endif
+
+# Windows resource compilation
+build/resources/smite_res.o: resources/smite.rc resources/smite.ico
+	@$(MKDIR) -p $(dir $@)
+	cd resources && $(WINDRES) smite.rc -O coff -o ../build/resources/smite_res.o
 
 build/src/%.o: src/%.cpp
 	@$(MKDIR) -p $(dir $@)
@@ -120,10 +130,10 @@ release: clean $(TARGET)
 dist: release
 	@$(MKDIR) -p dist/smite-$(VERSION)-$(PLATFORM)
 	cp $(TARGET) LICENSE README.md dist/smite-$(VERSION)-$(PLATFORM)/
-	@$(MKDIR) -p dist/smite-$(VERSION)-$(PLATFORM)/modules/kubernetes/quests
-	@$(MKDIR) -p dist/smite-$(VERSION)-$(PLATFORM)/modules/kubernetes/state
-	cp src/modules/kubernetes/quests/*.yaml dist/smite-$(VERSION)-$(PLATFORM)/modules/kubernetes/quests/ 2>/dev/null || true
-	cp src/modules/kubernetes/state/*.yaml dist/smite-$(VERSION)-$(PLATFORM)/modules/kubernetes/state/ 2>/dev/null || true
+	@$(MKDIR) -p dist/smite-$(VERSION)-$(PLATFORM)/src/modules/kubernetes/quests
+	@$(MKDIR) -p dist/smite-$(VERSION)-$(PLATFORM)/src/modules/kubernetes/state
+	cp src/modules/kubernetes/quests/*.yaml dist/smite-$(VERSION)-$(PLATFORM)/src/modules/kubernetes/quests/ 2>/dev/null || true
+	cp src/modules/kubernetes/state/*.yaml dist/smite-$(VERSION)-$(PLATFORM)/src/modules/kubernetes/state/ 2>/dev/null || true
 	cd dist && $(TAR) -czf smite-$(VERSION)-$(PLATFORM).tar.gz smite-$(VERSION)-$(PLATFORM)
 	@echo "Created dist/smite-$(VERSION)-$(PLATFORM).tar.gz"
 
