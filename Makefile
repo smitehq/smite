@@ -1,18 +1,57 @@
-# Compiler and flags
-CXX := clang++
-MYSYS2_PATH := C:/msys64/mingw64
-CXXFLAGS := -g -std=c++20 -finput-charset=UTF-8 -fexec-charset=UTF-8 -DYAML_CPP_STATIC_DEFINE -DNCURSES_STATIC -static -I. -I src -I$(MYSYS2_PATH)/include
-LIBS = -lyaml-cpp -lfmt -lreadline -lncurses -lstdc++fs
-LDFLAGS := -L$(MYSYS2_PATH)/lib $(LIBS) -mconsole -static
+# Detect OS
+UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
-# MSYS2 tools path (for Unix commands like mkdir/rm)
-MSYS2_TOOLS := C:/msys64/usr/bin
-MKDIR := $(MSYS2_TOOLS)/mkdir
-RM := $(MSYS2_TOOLS)/rm
-TAR := $(MSYS2_TOOLS)/tar
+# Compiler
+CXX := clang++
 
 # Version
 VERSION := 0.1.0
+
+# Platform-specific settings
+ifeq ($(UNAME_S),Linux)
+    # Linux
+    TARGET := smite
+    PLATFORM := linux-amd64
+    INCLUDE_PATHS := -I. -I src -I/usr/include
+    LIB_PATHS := -L/usr/lib -L/usr/lib/x86_64-linux-gnu
+    LIBS := -lyaml-cpp -lfmt -lreadline -lncurses -lstdc++fs
+    CXXFLAGS := -g -std=c++20 -DYAML_CPP_STATIC_DEFINE -I. -I src $(INCLUDE_PATHS)
+    LDFLAGS := $(LIB_PATHS) $(LIBS)
+    MKDIR := mkdir
+    RM := rm
+    TAR := tar
+    EXE_SUFFIX :=
+else ifeq ($(UNAME_S),Darwin)
+    # macOS
+    TARGET := smite
+    PLATFORM := macos-amd64
+    INCLUDE_PATHS := -I. -I src -I/usr/local/include -I/opt/homebrew/include
+    LIB_PATHS := -L/usr/local/lib -L/opt/homebrew/lib
+    LIBS := -lyaml-cpp -lfmt -lreadline -lncurses
+    CXXFLAGS := -g -std=c++20 -DYAML_CPP_STATIC_DEFINE -I. -I src $(INCLUDE_PATHS)
+    LDFLAGS := $(LIB_PATHS) $(LIBS)
+    MKDIR := mkdir
+    RM := rm
+    TAR := tar
+    EXE_SUFFIX :=
+else
+    # Windows (MSYS2/MinGW)
+    TARGET := smite.exe
+    PLATFORM := windows-amd64
+    MSYS2_PATH := C:/msys64/mingw64
+    MSYS2_TOOLS := C:/msys64/usr/bin
+    INCLUDE_PATHS := -I. -I src -I$(MSYS2_PATH)/include
+    LIB_PATHS := -L$(MSYS2_PATH)/lib
+    LIBS := -lyaml-cpp -lfmt -lreadline -lncurses -lstdc++fs
+    CXXFLAGS := -g -std=c++20 -finput-charset=UTF-8 -fexec-charset=UTF-8 -DYAML_CPP_STATIC_DEFINE -DNCURSES_STATIC -static $(INCLUDE_PATHS)
+    LDFLAGS := $(LIB_PATHS) $(LIBS) -mconsole -static
+    MKDIR := $(MSYS2_TOOLS)/mkdir
+    RM := $(MSYS2_TOOLS)/rm
+    TAR := $(MSYS2_TOOLS)/tar
+    EXE_SUFFIX := .exe
+    WINDRES := windres
+    RESOURCE_OBJ := build/resources/smite_res.o
+endif
 
 # Source files
 SRC_SRCS := $(wildcard src/*.cpp) \
@@ -21,84 +60,83 @@ SRC_SRCS := $(wildcard src/*.cpp) \
             $(wildcard src/state/*.cpp) \
             $(wildcard src/modules/**/*.cpp)
 
-TEST_SRCS := $(wildcard test/*.cpp)
+TEST_SRCS := $(wildcard tests/*.cpp)
 
 # Object files (all under build/)
 SRC_OBJS := $(SRC_SRCS:src/%.cpp=build/src/%.o)
-TEST_OBJS := $(TEST_SRCS:test/%.cpp=build/test/%.o)
-
-# Executable
-TARGET = smite.exe
+TEST_OBJS := $(TEST_SRCS:tests/%.cpp=build/tests/%.o)
 
 # Core build
 $(TARGET): $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 build/src/%.o: src/%.cpp
-	$(MKDIR) -p $(dir $@)
+	@$(MKDIR) -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Clean
 clean:
 	$(RM) -rf build dist $(TARGET)
 
-# K8s Quest Test (specific standalone test)
+# Run all tests
+test: test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday
+
+# K8s Quest Test
 test-k8s-quest: build/tests/test_k8s_quest.o $(SRC_OBJS)
-	$(CXX) $(CXXFLAGS) build/tests/test_k8s_quest.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_quest.exe $(LDFLAGS)
-	./build/tests/test_k8s_quest.exe
+	$(CXX) $(CXXFLAGS) build/tests/test_k8s_quest.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_quest$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_k8s_quest$(EXE_SUFFIX)
 
-# Shell module (specific standalone test)
+# Shell module test
 test-shell: build/tests/test_shell.o $(SRC_OBJS)
-	$(CXX) $(CXXFLAGS) build/tests/test_shell.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_shell.exe $(LDFLAGS)
-	./build/tests/test_shell.exe
+	$(CXX) $(CXXFLAGS) build/tests/test_shell.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_shell$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_shell$(EXE_SUFFIX)
 
-# Quest Browser Test (specific standalone test)
+# Quest Browser Test
 test-quest-browser: build/tests/test_quest_browser.o $(SRC_OBJS)
-	$(CXX) $(CXXFLAGS) build/tests/test_quest_browser.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_quest_browser.exe $(LDFLAGS)
-	./build/tests/test_quest_browser.exe
+	$(CXX) $(CXXFLAGS) build/tests/test_quest_browser.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_quest_browser$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_quest_browser$(EXE_SUFFIX)
 
 # K8s Spec Tracking Quests Test
 test-k8s-spec: build/tests/test_k8s_spec_quests.o $(SRC_OBJS)
-	$(CXX) $(CXXFLAGS) build/tests/test_k8s_spec_quests.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_spec_quests.exe $(LDFLAGS)
-	./build/tests/test_k8s_spec_quests.exe
+	$(CXX) $(CXXFLAGS) build/tests/test_k8s_spec_quests.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_spec_quests$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_k8s_spec_quests$(EXE_SUFFIX)
 
 # K8s Black Friday Quest Test
 test-k8s-black-friday: build/tests/test_k8s_black_friday.o $(SRC_OBJS)
-	$(CXX) $(CXXFLAGS) build/tests/test_k8s_black_friday.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_black_friday.exe $(LDFLAGS)
-	./build/tests/test_k8s_black_friday.exe
+	$(CXX) $(CXXFLAGS) build/tests/test_k8s_black_friday.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_black_friday$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_k8s_black_friday$(EXE_SUFFIX)
 
 build/tests/%.o: tests/%.cpp
-	$(MKDIR) -p $(dir $@)
+	@$(MKDIR) -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Dist (create binary tarball: exe + README + optional YAMLs)
-dist: $(TARGET)
-	$(MKDIR) -p dist/modules
-	cp $(TARGET) README.md dist/
-	yaml_files := $(shell find src/modules -name '*.yaml' -type f 2>/dev/null)
-	if [ -n "$(yaml_files)" ]; then \
-		for file in $(yaml_files); do \
-			dir=$$(dirname $$file | sed 's|^src/modules/||'); \
-			$(MKDIR) -p "dist/modules/$$dir"; \
-			cp $$file "dist/modules/$$dir/"; \
-		done; \
-	else \
-		echo "No YAMLs found—skipping"; \
-	fi
-	$(TAR) -czf dist/smite-$(VERSION).tar.gz -C dist .
-	$(RM) -rf dist
+# Release build (stripped binary)
+release: CXXFLAGS += -O3 -DNDEBUG
+release: LDFLAGS += -s
+release: clean $(TARGET)
+	@echo "Built release binary: $(TARGET)"
 
-# Distcheck (test binary dist: extract, run exe, verify)
-distcheck: dist
-	$(TAR) -xzf dist/smite-$(VERSION).tar.gz
-	cd smite-$(VERSION) && ./$(TARGET) --version
-	cd smite-$(VERSION) && make test
-	$(RM) -rf smite-$(VERSION)
-	$(RM) dist/smite-$(VERSION).tar.gz
+# Create distribution package
+dist: release
+	@$(MKDIR) -p dist/smite-$(VERSION)-$(PLATFORM)
+	cp $(TARGET) LICENSE README.md dist/smite-$(VERSION)-$(PLATFORM)/
+	@$(MKDIR) -p dist/smite-$(VERSION)-$(PLATFORM)/modules/kubernetes/quests
+	@$(MKDIR) -p dist/smite-$(VERSION)-$(PLATFORM)/modules/kubernetes/state
+	cp src/modules/kubernetes/quests/*.yaml dist/smite-$(VERSION)-$(PLATFORM)/modules/kubernetes/quests/ 2>/dev/null || true
+	cp src/modules/kubernetes/state/*.yaml dist/smite-$(VERSION)-$(PLATFORM)/modules/kubernetes/state/ 2>/dev/null || true
+	cd dist && $(TAR) -czf smite-$(VERSION)-$(PLATFORM).tar.gz smite-$(VERSION)-$(PLATFORM)
+	@echo "Created dist/smite-$(VERSION)-$(PLATFORM).tar.gz"
+
+# Debug target to show platform info
+show-platform:
+	@echo "Platform: $(PLATFORM)"
+	@echo "Target: $(TARGET)"
+	@echo "CXX: $(CXX)"
+	@echo "OS: $(UNAME_S)"
 
 # Debug target to show what files are being compiled
 show-sources:
 	@echo "Source files:"
 	@echo $(SRC_SRCS) | tr ' ' '\n'
 
-.PHONY: clean test distcheck dist show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday
+.PHONY: clean test release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday
