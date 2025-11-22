@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/seant/www/smite",
-      "program": "c:/Users/seant/www/smite/smite.exe",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/smite.exe",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
