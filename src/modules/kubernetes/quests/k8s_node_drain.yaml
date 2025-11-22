@@ -49,3 +49,6 @@ hints:
   - "Check node status with 'kubectl get nodes'"
   - "Verify pods moved with 'kubectl get pods -o wide'"
   - "In a real cluster, drain would be 'kubectl drain worker-2 --ignore-daemonsets'"
+
+unlock_quests:
+  - k8s_resource_request

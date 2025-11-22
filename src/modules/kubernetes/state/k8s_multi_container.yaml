@@ -1,0 +1,51 @@
+cluster:
+  name: logging-cluster
+  nodes:
+    - name: node-1
+      ip: 10.244.0.50
+      pods:
+        - name: app
+          status: Running
+          restarts: 0
+          image: app:v1
+          container_state: running
+          logs:
+            - timestamp: "2025-11-13T13:00:00"
+              message: "[app] Application started successfully"
+            - timestamp: "2025-11-13T13:00:05"
+              message: "[app] Processing request #1"
+            - timestamp: "2025-11-13T13:00:10"
+              message: "[app] WARNING: Logs will be lost on restart - no persistence!"
+          events: []
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: app
+      replicas: 1
+      ready_replicas: 1
+      available_replicas: 1
+      image: app:v1
+      age: "5m"
+  services: []
+
+# Simulation: App keeps warning about ephemeral logs
+simulation:
+  enabled: true
+  tick_rate: 10
+
+  rules:
+    - name: "ephemeral_log_warnings"
+      trigger:
+        type: interval
+        every: 10s
+      conditions:
+        - type: pod_status
+          pod: app
+          status: Running
+      actions:
+        - type: add_log
+          pod: app
+          log:
+            timestamp: "{{current_time}}"
+            message: "[app] WARNING: No log persistence configured - logs will be lost on restart"

@@ -16,6 +16,19 @@
 #include <atomic>
 #include <mutex>
 #include <chrono>
+#include <regex>
+#include <random>
+#include <optional>
+
+// Forward declare SimulationConfig to avoid circular dependency
+// The actual include is done via forward declaration pattern
+namespace k8s_simulation {
+    struct SimulationConfig;
+    struct Trigger;
+    struct Condition;
+    struct Action;
+    struct SimulationRule;
+}
 
 struct PodEvent {
     std::string type;       // e.g., "Warning" or "Normal"
@@ -148,14 +161,9 @@ struct Cluster {
     std::vector<Service> services;
 };
 
-// Forward declaration for simulation
-namespace k8s_simulation {
-    struct SimulationConfig;
-}
-
 class KubernetesModule : public SmiteModule {
 public:
-    KubernetesModule() = default;
+    KubernetesModule();  // Defined in .cpp where SimulationConfig is complete
     ~KubernetesModule() override;  // Need custom destructor to stop simulation thread
 
     //--------------------------------------
@@ -169,6 +177,9 @@ public:
     std::vector<std::string> registered_prefixes() const override;
     bool activate_quest(const std::string& quest_id) override;
     std::string check_quest_completion();  // Check if active quest is complete and return completion message
+    std::string get_active_quest_id() const override { return active_quest_id; }
+    bool is_quest_just_completed() const override { return quest_just_completed; }
+    void clear_quest_completion_flag() override { quest_just_completed = false; }
 
 private:
     std::string path;
@@ -186,6 +197,7 @@ private:
     std::string active_quest_id;
     std::unordered_map<std::string, YAML::Node> quest_data;  // quest_id -> quest YAML
     bool quest_completed = false;  // Track if current quest has been completed
+    bool quest_just_completed = false;  // Flag for engine to detect completion
     std::string last_command_executed;  // Track last command for quest checking
 
     //--------------------------------------

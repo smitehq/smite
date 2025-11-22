@@ -1,0 +1,87 @@
+cluster:
+  name: staging-cluster
+  nodes:
+    - name: node-1
+      ip: 10.244.0.20
+      pods:
+        - name: web
+          status: CrashLoopBackOff
+          restarts: 8
+          image: webapp:v1.0
+          container_state: waiting
+          last_state:
+            reason: Error
+            exit_code: 1
+            started: "2025-11-13T10:00:00"
+            finished: "2025-11-13T10:00:02"
+          events:
+            - type: Warning
+              reason: BackOff
+              message: "Back-off restarting failed container web in pod web"
+              timestamp: "2025-11-13T10:05:00"
+          logs:
+            - timestamp: "2025-11-13T10:00:00"
+              message: "Web application starting..."
+            - timestamp: "2025-11-13T10:00:01"
+              message: "Loading configuration from /config/app.conf"
+            - timestamp: "2025-11-13T10:00:02"
+              message: "ERROR: Configuration file not found at /config/app.conf"
+            - timestamp: "2025-11-13T10:00:02"
+              message: "FATAL: Cannot start without configuration"
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: web
+      replicas: 1
+      ready_replicas: 0
+      available_replicas: 0
+      image: webapp:v1.0
+      age: "10m"
+  services: []
+
+# Simulation: Continuous crashloop due to missing config
+simulation:
+  enabled: true
+  tick_rate: 10
+
+  rules:
+    - name: "configmap_crashloop"
+      trigger:
+        type: interval
+        every: 10s
+      conditions:
+        - type: pod_status
+          pod: web
+          status: CrashLoopBackOff
+      actions:
+        - type: increment_restarts
+          pod: web
+          max: 999
+
+        - type: add_event
+          pod: web
+          event:
+            type: Warning
+            reason: BackOff
+            message: "Back-off restarting failed container web in pod web"
+
+    - name: "configmap_error_logs"
+      trigger:
+        type: interval
+        every: 3s
+      conditions:
+        - type: pod_status
+          pod: web
+          status: CrashLoopBackOff
+      actions:
+        - type: cycle_logs
+          pod: web
+          messages:
+            - "Web application starting..."
+            - "Initializing HTTP server..."
+            - "Loading configuration from /config/app.conf"
+            - "ERROR: Configuration file not found at /config/app.conf"
+            - "ERROR: open /config/app.conf: no such file or directory"
+            - "FATAL: Cannot start without configuration"
+            - "[Container Exit Code: 1]"

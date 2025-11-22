@@ -1,0 +1,50 @@
+id: k8s_resource_request
+title: "The Unschedulable Pod"
+description: "Fix a pod stuck in Pending due to insufficient cluster resources."
+difficulty: advanced
+
+intro_text: |
+  A pod sits in Pending status, orphaned and unscheduled. It waits for
+  a home, but no node will accept it.
+
+  "Insufficient memory," the scheduler declares. "No node has enough
+  resources to satisfy this pod's requests."
+
+  The pod asks for 16GB of memory. The cluster's largest node has only
+  8GB available. A deadlock of mathematics.
+
+  Your mission: Adjust the resource requests to fit reality, or scale
+  the cluster to meet the demands. Make the impossible... possible.
+
+condition:
+  type: pod_status
+  pod: data-processor
+  status: Running
+
+reward_xp: 115
+reward_item: "capacity_calculator"
+
+completion_message: |
+  The resource requests drop to reasonable levels! The scheduler sees
+  a node that can fit the pod. Binding occurs. The pod transitions
+  from Pending to Running.
+
+  REWARDS:
+   * +115 Experience Points
+   * Capacity Calculator (Epic Item)
+   * Achievement Unlocked: "Capacity Planner"
+   * Title Earned: "Resource Optimizer"
+
+  You've learned that pods must request resources they'll actually use.
+  Over-requesting starves the cluster. Under-requesting causes OOMKills.
+  Balance is everything.
+
+hints:
+  - "Check why the pod is pending: 'kubectl describe pod data-processor'"
+  - "Look for scheduling failure events about insufficient resources"
+  - "Check node capacity: 'kubectl describe nodes'"
+  - "The pod is requesting more memory than any node has available"
+  - "Edit the deployment to reduce memory requests to something reasonable"
+
+unlock_quests:
+  - k8s_multi_container

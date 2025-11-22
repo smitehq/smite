@@ -42,3 +42,6 @@ hints:
   - "You need to edit the deployment's liveness probe settings"
   - "Increase initialDelaySeconds to give the app time to start"
   - "Adjust timeoutSeconds and failureThreshold to be more forgiving"
+
+unlock_quests:
+  - k8s_configmap

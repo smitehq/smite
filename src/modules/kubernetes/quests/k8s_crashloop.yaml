@@ -17,7 +17,7 @@ intro_text: |
   Break the curse of the CrashLoopBackOff before the entire system
   crumbles into digital oblivion.
 
-  The pod's fate... is in your hands.
+  The pod's fate... is in your hands./
 
 # Quest flow: Player must create the missing db-secret
 # When db-secret is created, the pod will automatically recover
@@ -91,7 +91,7 @@ hints:
   - "List secrets with 'kubectl get secrets' to see what's available."
 
 unlock_quests:
-  - k8s_database_restore
+  - k8s_imagepull
 
 milestone_bonus:
   xp_multiplier: 1.2

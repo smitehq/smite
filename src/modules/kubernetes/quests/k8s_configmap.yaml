@@ -1,0 +1,51 @@
+id: k8s_configmap
+title: "The Missing Configuration"
+description: "Fix an application failing due to missing ConfigMap."
+difficulty: intermediate
+
+intro_text: |
+  The web application pod runs, but something is deeply wrong. It starts,
+  loads its code, initializes... then crashes. Over and over.
+
+  The logs cry out: "Configuration file not found at /config/app.conf"
+  The application expects configuration data that simply doesn't exist.
+
+  In Kubernetes, configuration lives separate from containers - stored in
+  ConfigMaps and mounted as volumes or environment variables.
+
+  Your mission: Create the missing configuration and mount it properly
+  so the application can finally read its settings and come to life.
+
+condition:
+  type: resource_exists
+  resource: configmap
+  name: app-config
+
+reward_xp: 95
+reward_item: "config_master_scroll"
+
+completion_message: |
+  The ConfigMap manifests in the cluster! The kubelet sees the new
+  configuration and mounts it into the pod's filesystem.
+
+  The application restarts, finds the configuration file at /config/app.conf,
+  reads its settings, and... success! The web pod stabilizes and begins
+  serving traffic.
+
+  REWARDS:
+   * +95 Experience Points
+   * Config Master Scroll (Epic Item)
+   * Achievement Unlocked: "Configuration Wizard"
+
+  You've learned that applications and their configuration should be
+  decoupled. ConfigMaps make this separation elegant and manageable.
+
+hints:
+  - "Check the pod's status and logs with 'kubectl logs web'"
+  - "The application is looking for a config file that doesn't exist"
+  - "You need to create a ConfigMap named 'app-config'"
+  - "Use 'kubectl create configmap app-config --from-literal=app.conf=...'"
+  - "The pod expects the ConfigMap to be mounted at /config"
+
+unlock_quests:
+  - k8s_service_discovery

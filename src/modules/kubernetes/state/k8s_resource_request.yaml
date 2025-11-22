@@ -1,0 +1,66 @@
+cluster:
+  name: resource-constrained-cluster
+  nodes:
+    - name: worker-1
+      ip: 10.244.0.40
+      pods:
+        - name: web-1
+          status: Running
+          restarts: 0
+          image: web:v1
+          container_state: running
+          logs: []
+          events: []
+
+    - name: worker-2
+      ip: 10.244.0.41
+      pods:
+        - name: data-processor
+          status: Pending
+          restarts: 0
+          image: data-processor:v2
+          container_state: waiting
+          events:
+            - type: Warning
+              reason: FailedScheduling
+              message: "0/2 nodes are available: 2 Insufficient memory."
+              timestamp: "2025-11-13T12:00:00"
+            - type: Warning
+              reason: FailedScheduling
+              message: "0/2 nodes are available: insufficient memory (requested: 16Gi, available: 8Gi on worker-1, 8Gi on worker-2)"
+              timestamp: "2025-11-13T12:00:30"
+          logs: []
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: data-processor
+      replicas: 1
+      ready_replicas: 0
+      available_replicas: 0
+      image: data-processor:v2
+      age: "10m"
+      memory_limit: "16Gi"  # Too large! Should be 4Gi or less
+  services: []
+
+# Simulation: Continuously failing to schedule
+simulation:
+  enabled: true
+  tick_rate: 10
+
+  rules:
+    - name: "scheduling_failure_events"
+      trigger:
+        type: interval
+        every: 30s
+      conditions:
+        - type: pod_status
+          pod: data-processor
+          status: Pending
+      actions:
+        - type: add_event
+          pod: data-processor
+          event:
+            type: Warning
+            reason: FailedScheduling
+            message: "0/2 nodes are available: 2 Insufficient memory. Pod requested 16Gi but max available is 8Gi"

@@ -29,8 +29,13 @@
 #include "commands/scale.h"
 #include "commands/rollout.h"
 #include "commands/cordon.h"
+#include "commands/create_configmap.h"
+#include "commands/edit_service.h"
 
 namespace fs = std::filesystem;
+
+// Constructor must be defined in .cpp where SimulationConfig is complete
+KubernetesModule::KubernetesModule() = default;
 
 std::string KubernetesModule::name() const { return "kubernetes"; }
 
@@ -366,6 +371,8 @@ void KubernetesModule::register_builtin_commands() {
     register_command("kubectl rollout", cmd_rollout);
     register_command("kubectl cordon", cmd_cordon);
     register_command("kubectl uncordon", cmd_uncordon);
+    register_command("kubectl create configmap", cmd_create_configmap);
+    register_command("kubectl edit service", cmd_edit_service);
 }
 
 auto KubernetesModule::find_pod(const std::string& pod_name) -> decltype(pods.begin()) {
@@ -854,6 +861,84 @@ bool KubernetesModule::evaluate_condition(const YAML::Node& conditionSpec) {
         return !dep_it->affinity_type.empty() && dep_it->affinity_type != "none";
     }
 
+    // service_has_endpoints: Check if a service has endpoints (pods matching its selector)
+    else if (t == "service_has_endpoints") {
+        std::string service_name = conditionSpec["service"].as<std::string>();
+
+        auto svc_it = std::find_if(services.begin(), services.end(),
+            [&](const Service& s) { return s.name == service_name; });
+
+        if (svc_it == services.end()) return false;
+
+        // Check if any pods match the service selector
+        int matching_pods = 0;
+        for (const auto& node : nodes) {
+            for (const auto& pod : node.pods) {
+                bool matches = true;
+                for (const auto& [key, val] : svc_it->selector) {
+                    auto label_it = pod.labels.find(key);
+                    if (label_it == pod.labels.end() || label_it->second != val) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (matches && pod.status == "Running") {
+                    matching_pods++;
+                }
+            }
+        }
+
+        int min_endpoints = 1;
+        if (conditionSpec["min_endpoints"]) {
+            min_endpoints = conditionSpec["min_endpoints"].as<int>();
+        }
+
+        return matching_pods >= min_endpoints;
+    }
+
+    // deployment_rollback_completed: Check if deployment has been rolled back
+    else if (t == "deployment_rollback_completed") {
+        std::string deployment_name = conditionSpec["deployment"].as<std::string>();
+
+        auto dep_it = std::find_if(deployments.begin(), deployments.end(),
+            [&](const Deployment& d) { return d.name == deployment_name; });
+
+        if (dep_it == deployments.end()) return false;
+
+        // Check if revision decreased (indicating rollback) and deployment is healthy
+        return dep_it->revision < 3 && dep_it->ready_replicas == dep_it->replicas;
+    }
+
+    // pod_has_multiple_containers: Check if pod has multiple containers
+    else if (t == "pod_has_multiple_containers") {
+        std::string pod_name = conditionSpec["pod"].as<std::string>();
+
+        // For now, we'll simulate this by checking a pod field
+        // In a real implementation, you'd track containers per pod
+        int min_containers = 2;
+        if (conditionSpec["min_containers"]) {
+            min_containers = conditionSpec["min_containers"].as<int>();
+        }
+
+        // This would need to be tracked in the Pod struct
+        // For now, return false (needs implementation)
+        return false;  // TODO: Track containers in Pod struct
+    }
+
+    // node_cordoned: Check if a node is cordoned
+    else if (t == "node_cordoned") {
+        std::string node_name = conditionSpec["node"].as<std::string>();
+        bool should_be_cordoned = true;
+        if (conditionSpec["cordoned"]) {
+            should_be_cordoned = conditionSpec["cordoned"].as<bool>();
+        }
+
+        auto node_it = find_node(node_name);
+        if (node_it == nodes.end()) return false;
+
+        return node_it->cordoned == should_be_cordoned;
+    }
+
     return false;
 }
 
@@ -1047,6 +1132,7 @@ std::string KubernetesModule::check_quest_completion() {
     // Evaluate the completion condition
     if (evaluate_condition(quest["condition"])) {
         quest_completed = true;
+        quest_just_completed = true;  // Set flag for engine to detect
 
         // Stop simulation when quest completes
         stop_simulation();

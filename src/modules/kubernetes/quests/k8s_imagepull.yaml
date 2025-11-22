@@ -1,0 +1,50 @@
+id: k8s_imagepull
+title: "The ImagePullBackOff Mystery"
+description: "Fix a pod stuck in ImagePullBackOff due to private registry authentication."
+difficulty: beginner
+
+intro_text: |
+  A new deployment has arrived, but the pods refuse to start. They linger in
+  ImagePullBackOff, unable to pull the container image from the private registry.
+
+  The kubelet tries again and again, each attempt failing. "Unauthorized,"
+  the registry responds coldly. "You cannot pull this image."
+
+  Somewhere in the cluster's configuration lies the missing key - the secret
+  that will grant access to this forbidden repository.
+
+  Your mission: Discover why the image pull is failing and provide the
+  credentials needed to unlock the registry's gates.
+
+condition:
+  type: resource_exists
+  resource: secret
+  name: registry-secret
+
+reward_xp: 80
+reward_item: "registry_key"
+
+completion_message: |
+  The registry secret materializes in the cluster! The imagePullSecrets
+  reference is validated, and the kubelet tries again...
+
+  Success! The image downloads, the container starts, and the api pod
+  springs to life. No longer does it writhe in ImagePullBackOff.
+
+  REWARDS:
+   * +80 Experience Points
+   * Registry Key (Rare Item)
+   * Achievement Unlocked: "Registry Master"
+
+  You've learned that private registries guard their images jealously.
+  Only those with proper credentials may pass.
+
+hints:
+  - "Check why the pod can't pull the image with 'kubectl describe pod api'"
+  - "Look for 'imagePullBackOff' or 'ErrImagePull' in the events"
+  - "You need to create a docker-registry secret"
+  - "Use 'kubectl create secret docker-registry' with registry credentials"
+  - "The secret name should be 'registry-secret'"
+
+unlock_quests:
+  - k8s_oomkilled

@@ -1,0 +1,53 @@
+id: k8s_multi_container
+title: "The Sidecar Pattern"
+description: "Deploy an application with a logging sidecar container."
+difficulty: expert
+
+intro_text: |
+  The application pod runs alone, isolated, logging to stdout. But logs
+  are ephemeral in containers - they vanish when pods restart.
+
+  You need persistence. You need a sidecar - a companion container that
+  lives alongside your app, collecting logs and shipping them to a
+  central location.
+
+  This is the sidecar pattern: two containers, one pod, shared lifecycle,
+  shared storage. The app writes logs to a shared volume, the sidecar
+  reads and forwards them.
+
+  Your mission: Add a logging sidecar to the application pod. Make the
+  logs persistent and searchable.
+
+condition:
+  type: pod_has_multiple_containers
+  pod: app
+  min_containers: 2
+
+reward_xp: 140
+reward_item: "sidecar_blueprint"
+
+completion_message: |
+  The sidecar container spawns alongside the main application! Two
+  containers share one pod, one filesystem, one lifecycle.
+
+  Logs flow from app to sidecar to central storage. Nothing is lost.
+  Restarts no longer erase history.
+
+  REWARDS:
+   * +140 Experience Points
+   * Sidecar Blueprint (Legendary Item)
+   * Achievement Unlocked: "Pod Architect"
+   * Title Earned: "Multi-Container Master"
+
+  You've learned that pods can contain multiple containers working
+  together. Sidecars, ambassadors, adapters - the patterns are endless.
+
+hints:
+  - "Multi-container pods share storage and networking"
+  - "The sidecar pattern is perfect for logging, proxies, and monitoring"
+  - "You'll need to update the deployment to add a second container"
+  - "Both containers can mount the same shared volume"
+  - "Common sidecar images: fluentd, filebeat, envoy"
+
+unlock_quests:
+  - k8s_persistent_storage

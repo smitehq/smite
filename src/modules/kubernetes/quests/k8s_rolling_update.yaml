@@ -1,0 +1,51 @@
+id: k8s_rolling_update
+title: "The Failed Deployment"
+description: "Rescue a deployment stuck in a failed rolling update."
+difficulty: advanced
+
+intro_text: |
+  A deployment update has gone catastrophically wrong. The new version
+  crashes immediately, but the rollout continues trying to replace healthy
+  pods with broken ones.
+
+  Half your pods are down. Users see errors. The deployment status shows
+  a nightmare: "2/5 updated, 1 available, 2 unavailable"
+
+  The old version worked. The new version is poison. But Kubernetes keeps
+  trying to roll forward into disaster.
+
+  Your mission: Stop the bleeding. Roll back to the last known good version
+  before the entire service collapses into darkness.
+
+condition:
+  type: deployment_rollback_completed
+  deployment: web-app
+
+reward_xp: 120
+reward_item: "rollback_rune"
+
+completion_message: |
+  The rollback executes with precision! Old pods return. New pods vanish.
+  The deployment stabilizes at the previous revision.
+
+  Traffic flows smoothly once more. Users stop complaining. Your cluster
+  breathes a sigh of relief.
+
+  REWARDS:
+   * +120 Experience Points
+   * Rollback Rune (Legendary Item)
+   * Achievement Unlocked: "Deployment Master"
+   * Title Earned: "Rollback Savior"
+
+  You've learned that deployments track revision history. When updates
+  fail, you can always roll back to safety. Know your escape routes.
+
+hints:
+  - "Check the deployment status with 'kubectl get deployments'"
+  - "Look at rollout status: 'kubectl rollout status deployment web-app'"
+  - "View rollout history: 'kubectl rollout history deployment web-app'"
+  - "Roll back to the previous version: 'kubectl rollout undo deployment web-app'"
+  - "Verify the rollback completed successfully"
+
+unlock_quests:
+  - k8s_node_drain

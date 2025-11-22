@@ -1,0 +1,70 @@
+cluster:
+  name: prod-cluster
+  nodes:
+    - name: node-1
+      ip: 10.244.0.15
+      pods:
+        - name: api
+          status: ImagePullBackOff
+          restarts: 0
+          image: private-registry.io/company/api:v2.1
+          container_state: waiting
+          last_state:
+            reason: ""
+            exit_code: 0
+            started: ""
+            finished: ""
+          events:
+            - type: Warning
+              reason: Failed
+              message: "Failed to pull image 'private-registry.io/company/api:v2.1': rpc error: code = Unknown desc = Error response from daemon: pull access denied for private-registry.io/company/api, repository does not exist or may require 'docker login'"
+              timestamp: "2025-11-13T09:00:00"
+            - type: Warning
+              reason: ErrImagePull
+              message: "rpc error: code = Unknown desc = Error response from daemon: pull access denied"
+              timestamp: "2025-11-13T09:00:05"
+            - type: Normal
+              reason: BackOff
+              message: "Back-off pulling image 'private-registry.io/company/api:v2.1'"
+              timestamp: "2025-11-13T09:00:20"
+          logs: []
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: api
+      replicas: 1
+      ready_replicas: 0
+      available_replicas: 0
+      image: private-registry.io/company/api:v2.1
+      age: "5m"
+  services: []
+
+# Simulation: ImagePullBackOff with increasing backoff intervals
+simulation:
+  enabled: true
+  tick_rate: 10
+
+  rules:
+    - name: "imagepull_backoff_cycle"
+      trigger:
+        type: interval
+        every: 15s
+      conditions:
+        - type: pod_status
+          pod: api
+          status: ImagePullBackOff
+      actions:
+        - type: add_event
+          pod: api
+          event:
+            type: Warning
+            reason: Failed
+            message: "Failed to pull image 'private-registry.io/company/api:v2.1': rpc error: code = Unknown desc = Error response from daemon: unauthorized: authentication required"
+
+        - type: add_event
+          pod: api
+          event:
+            type: Normal
+            reason: BackOff
+            message: "Back-off pulling image 'private-registry.io/company/api:v2.1'"

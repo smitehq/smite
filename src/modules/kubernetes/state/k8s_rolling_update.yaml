@@ -1,0 +1,168 @@
+cluster:
+  name: production-cluster
+  nodes:
+    - name: node-1
+      ip: 10.244.0.30
+      pods:
+        - name: web-app-old-1
+          status: Running
+          restarts: 0
+          image: web-app:v1.2
+          container_state: running
+          logs:
+            - timestamp: "2025-11-13T11:00:00"
+              message: "Web app v1.2 started successfully"
+          events: []
+          labels:
+            app: web-app
+            version: v1.2
+
+        - name: web-app-old-2
+          status: Running
+          restarts: 0
+          image: web-app:v1.2
+          container_state: running
+          logs:
+            - timestamp: "2025-11-13T11:00:00"
+              message: "Web app v1.2 started successfully"
+          events: []
+          labels:
+            app: web-app
+            version: v1.2
+
+    - name: node-2
+      ip: 10.244.0.31
+      pods:
+        - name: web-app-new-1
+          status: CrashLoopBackOff
+          restarts: 15
+          image: web-app:v1.3
+          container_state: waiting
+          last_state:
+            reason: Error
+            exit_code: 1
+            started: "2025-11-13T11:10:00"
+            finished: "2025-11-13T11:10:01"
+          events:
+            - type: Warning
+              reason: BackOff
+              message: "Back-off restarting failed container"
+              timestamp: "2025-11-13T11:15:00"
+          logs:
+            - timestamp: "2025-11-13T11:10:00"
+              message: "Web app v1.3 starting..."
+            - timestamp: "2025-11-13T11:10:01"
+              message: "FATAL ERROR: Database migration v1.3 failed - incompatible schema"
+          labels:
+            app: web-app
+            version: v1.3
+
+        - name: web-app-new-2
+          status: CrashLoopBackOff
+          restarts: 14
+          image: web-app:v1.3
+          container_state: waiting
+          last_state:
+            reason: Error
+            exit_code: 1
+            started: "2025-11-13T11:10:05"
+            finished: "2025-11-13T11:10:06"
+          events:
+            - type: Warning
+              reason: BackOff
+              message: "Back-off restarting failed container"
+              timestamp: "2025-11-13T11:15:00"
+          logs:
+            - timestamp: "2025-11-13T11:10:05"
+              message: "Web app v1.3 starting..."
+            - timestamp: "2025-11-13T11:10:06"
+              message: "FATAL ERROR: Database migration v1.3 failed - incompatible schema"
+          labels:
+            app: web-app
+            version: v1.3
+
+  secrets: []
+  configmaps: []
+  deployments:
+    - name: web-app
+      replicas: 5
+      ready_replicas: 2
+      available_replicas: 2
+      image: web-app:v1.3
+      age: "15m"
+      revision: 3
+  services:
+    - name: web-app
+      type: ClusterIP
+      cluster_ip: 10.96.0.50
+      ports:
+        - "80:8080/TCP"
+      selector:
+        app: web-app
+      age: "30d"
+
+# Simulation: Failed rolling update with crashing new pods
+simulation:
+  enabled: true
+  tick_rate: 10
+
+  rules:
+    - name: "failed_rollout_new_pod_crashes"
+      trigger:
+        type: interval
+        every: 8s
+      conditions:
+        - type: pod_status
+          pod: web-app-new-1
+          status: CrashLoopBackOff
+      actions:
+        - type: increment_restarts
+          pod: web-app-new-1
+          max: 999
+
+        - type: add_event
+          pod: web-app-new-1
+          event:
+            type: Warning
+            reason: BackOff
+            message: "Back-off restarting failed container"
+
+    - name: "failed_rollout_new_pod_crashes_2"
+      trigger:
+        type: interval
+        every: 9s
+      conditions:
+        - type: pod_status
+          pod: web-app-new-2
+          status: CrashLoopBackOff
+      actions:
+        - type: increment_restarts
+          pod: web-app-new-2
+          max: 999
+
+        - type: add_event
+          pod: web-app-new-2
+          event:
+            type: Warning
+            reason: BackOff
+            message: "Back-off restarting failed container"
+
+    - name: "failed_rollout_error_logs"
+      trigger:
+        type: interval
+        every: 3s
+      conditions:
+        - type: pod_status
+          pod: web-app-new-1
+          status: CrashLoopBackOff
+      actions:
+        - type: cycle_logs
+          pod: web-app-new-1
+          messages:
+            - "Web app v1.3 starting..."
+            - "Loading configuration..."
+            - "Connecting to database..."
+            - "Running database migrations..."
+            - "ERROR: Migration v1.3 failed - table 'users_v2' already exists"
+            - "FATAL ERROR: Database migration v1.3 failed - incompatible schema"
+            - "[Container Exit Code: 1]"
