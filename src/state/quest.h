@@ -21,6 +21,7 @@ struct Quest {
     YAML::Node condition;
     int reward_xp;
     QuestDifficulty difficulty = QuestDifficulty::BEGINNER;
+    std::vector<std::string> unlock_quests;  // Quests unlocked on completion
 };
 
 class QuestManager {
@@ -35,6 +36,11 @@ public:
     // Activation
     bool activate_quest(const std::string& mod_name, const std::string& quest_id);
     bool is_active(const std::string& mod_name, const std::string& quest_id) const;
+
+    // Quest progress
+    void mark_quest_completed(const std::string& mod_name, const std::string& quest_id);
+    bool is_quest_unlocked(const std::string& mod_name, const std::string& quest_id) const;
+    bool is_quest_completed(const std::string& mod_name, const std::string& quest_id) const;
 
     // Hints
     std::string get_next_hint(const std::string& mod_name);
@@ -56,4 +62,6 @@ private:
     std::map<std::string, std::vector<Quest>> quests_by_module;
     std::map<std::string, std::string> active_quest_per_module; // only one quest per module
     std::map<std::string, int> hints_shown_per_module; // module -> number of hints shown
+    std::map<std::string, std::set<std::string>> unlocked_quests_per_module; // module -> set of unlocked quest IDs
+    std::map<std::string, std::set<std::string>> completed_quests_per_module; // module -> set of completed quest IDs
 };
