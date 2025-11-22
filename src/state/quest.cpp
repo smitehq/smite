@@ -38,11 +38,31 @@ void QuestManager::load_all_quests() {
                 }
             }
 
+            // Load unlock_quests
+            if (qyaml["unlock_quests"] && qyaml["unlock_quests"].IsSequence()) {
+                for (const auto& unlock_quest : qyaml["unlock_quests"]) {
+                    q.unlock_quests.push_back(unlock_quest.as<std::string>());
+                }
+            }
+
             q.condition = qyaml["condition"];
             q.reward_xp = qyaml["reward_xp"].as<int>(0);
             quests.push_back(q);
         }
         quests_by_module[mod_name] = quests;
+
+        // Initialize starter quests as unlocked for each module
+        // Unlock all beginner and intermediate quests as starting points
+        for (const auto& q : quests) {
+            if (q.difficulty == QuestDifficulty::BEGINNER ||
+                q.difficulty == QuestDifficulty::INTERMEDIATE) {
+                unlocked_quests_per_module[mod_name].insert(q.id);
+            }
+        }
+        // If no beginner/intermediate quests, unlock the first quest
+        if (unlocked_quests_per_module[mod_name].empty() && !quests.empty()) {
+            unlocked_quests_per_module[mod_name].insert(quests[0].id);
+        }
     }
 }
 
@@ -64,6 +84,12 @@ const Quest* QuestManager::get_quest(const std::string& mod, const std::string& 
 
 bool QuestManager::activate_quest(const std::string& mod, const std::string& quest_id) {
     if (!quests_by_module.count(mod)) return false;
+
+    // Check if quest is unlocked
+    if (!is_quest_unlocked(mod, quest_id)) {
+        return false;  // Cannot activate locked quest
+    }
+
     for (const auto& q : quests_by_module[mod]) {
         if (q.id == quest_id) {
             active_quest_per_module[mod] = quest_id;
@@ -85,8 +111,12 @@ std::string QuestManager::list_quests(const std::string& mod_name) const {
     if (it == quests_by_module.end()) return "No quests found.\n";
 
     for (const auto& q : it->second) {
+        // Only show unlocked quests
+        if (!is_quest_unlocked(mod_name, q.id)) continue;
+
         oss << "  - " << q.id << ": " << q.title;
         if (is_active(mod_name, q.id)) oss << " [ACTIVE]";
+        if (is_quest_completed(mod_name, q.id)) oss << " [COMPLETED]";
         oss << "\n";
     }
     return oss.str();
@@ -220,11 +250,16 @@ std::string QuestManager::list_all_quests_grouped() const {
                           QuestDifficulty::ADVANCED, QuestDifficulty::EXPERT}) {
             if (by_diff.count(diff) == 0 || by_diff[diff].empty()) continue;
             
-            oss << "    " << diff_to_str(diff) << " (" << by_diff[diff].size() << "):\n";
+            oss << "    " << diff_to_str(diff) << ":\n";
             for (const auto* q : by_diff[diff]) {
+                // Only show unlocked quests
+                if (!is_quest_unlocked(mod_name, q->id)) continue;
+
                 std::string status = "";
                 if (is_active(mod_name, q->id)) {
                     status = " [ACTIVE]";
+                } else if (is_quest_completed(mod_name, q->id)) {
+                    status = " [COMPLETED]";
                 }
                 oss << "      - " << q->id << ": " << q->title << " [" << q->reward_xp << " XP]" << status << "\n";
             }
@@ -236,6 +271,108 @@ std::string QuestManager::list_all_quests_grouped() const {
     
     oss << "Use 'quest activate <module> <quest_id>' to start a quest\n";
     oss << "Use 'hint' during a quest to get guidance\n\n";
-    
+
     return oss.str();
+}
+
+void QuestManager::mark_quest_completed(const std::string& mod_name, const std::string& quest_id) {
+    // Mark quest as completed
+    completed_quests_per_module[mod_name].insert(quest_id);
+
+    // Unlock follow-up quests
+    const Quest* quest = get_quest(mod_name, quest_id);
+    if (quest) {
+        for (const auto& unlock_quest_id : quest->unlock_quests) {
+            unlocked_quests_per_module[mod_name].insert(unlock_quest_id);
+        }
+    }
+
+    // Save state after completing quest
+    save_state();
+}
+
+bool QuestManager::is_quest_unlocked(const std::string& mod_name, const std::string& quest_id) const {
+    auto it = unlocked_quests_per_module.find(mod_name);
+    if (it == unlocked_quests_per_module.end()) return false;
+    return it->second.count(quest_id) > 0;
+}
+
+bool QuestManager::is_quest_completed(const std::string& mod_name, const std::string& quest_id) const {
+    auto it = completed_quests_per_module.find(mod_name);
+    if (it == completed_quests_per_module.end()) return false;
+    return it->second.count(quest_id) > 0;
+}
+
+void QuestManager::save_state() {
+    // Save unlocked and completed quests to ~/.smite/quest_state.yaml
+    YAML::Emitter out;
+    out << YAML::BeginMap;
+
+    out << YAML::Key << "unlocked_quests";
+    out << YAML::Value << YAML::BeginMap;
+    for (const auto& [mod_name, quest_ids] : unlocked_quests_per_module) {
+        out << YAML::Key << mod_name;
+        out << YAML::Value << YAML::BeginSeq;
+        for (const auto& qid : quest_ids) {
+            out << qid;
+        }
+        out << YAML::EndSeq;
+    }
+    out << YAML::EndMap;
+
+    out << YAML::Key << "completed_quests";
+    out << YAML::Value << YAML::BeginMap;
+    for (const auto& [mod_name, quest_ids] : completed_quests_per_module) {
+        out << YAML::Key << mod_name;
+        out << YAML::Value << YAML::BeginSeq;
+        for (const auto& qid : quest_ids) {
+            out << qid;
+        }
+        out << YAML::EndSeq;
+    }
+    out << YAML::EndMap;
+
+    out << YAML::EndMap;
+
+    // Write to file in home directory
+    std::string home = std::getenv("HOME") ? std::getenv("HOME") : ".";
+    std::string smite_dir = home + "/.smite";
+    fs::create_directories(smite_dir);
+
+    std::string state_file = smite_dir + "/quest_state.yaml";
+    std::ofstream file(state_file);
+    file << out.c_str();
+}
+
+void QuestManager::load_state() {
+    std::string home = std::getenv("HOME") ? std::getenv("HOME") : ".";
+    std::string state_file = home + "/.smite/quest_state.yaml";
+
+    if (!fs::exists(state_file)) return;
+
+    try {
+        YAML::Node state = YAML::LoadFile(state_file);
+
+        // Load unlocked quests
+        if (state["unlocked_quests"]) {
+            for (const auto& mod : state["unlocked_quests"]) {
+                std::string mod_name = mod.first.as<std::string>();
+                for (const auto& quest_id : mod.second) {
+                    unlocked_quests_per_module[mod_name].insert(quest_id.as<std::string>());
+                }
+            }
+        }
+
+        // Load completed quests
+        if (state["completed_quests"]) {
+            for (const auto& mod : state["completed_quests"]) {
+                std::string mod_name = mod.first.as<std::string>();
+                for (const auto& quest_id : mod.second) {
+                    completed_quests_per_module[mod_name].insert(quest_id.as<std::string>());
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        // Ignore errors, start fresh
+    }
 }
