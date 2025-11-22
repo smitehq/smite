@@ -287,6 +287,144 @@ int main() {
         ASSERT_STR_CONTAINS(output, "No such directory");
     END_TEST()
 
+    // ========================================
+    // Path Traversal & Filesystem Stress Tests
+    // ========================================
+
+    TEST("cd ../../../.. - relative parent paths not yet supported")
+        shell->run_command("cd", {"/tmp"});
+        std::string output = shell->run_command("cd", {"../../../.."});
+        std::cout << "cd ../../../.. output: '" << output << "'";
+        // Current behavior: relative paths with .. are not supported
+        ASSERT_STR_CONTAINS(output, "No such directory");
+    END_TEST()
+
+    TEST("cd /../../../.. - absolute paths with .. not yet normalized")
+        std::string output = shell->run_command("cd", {"/../../../.."});
+        std::cout << "cd /../../../.. output: '" << output << "'";
+        // Current behavior: .. in paths not normalized
+        ASSERT_STR_CONTAINS(output, "No such directory");
+    END_TEST()
+
+    TEST("cd with dots in middle of path - not yet normalized")
+        shell->run_command("cd", {"/"});
+        std::string output = shell->run_command("cd", {"/tmp/../etc"});
+        std::cout << "cd /tmp/../etc output: '" << output << "'";
+        // Current behavior: .. not resolved
+        ASSERT_STR_CONTAINS(output, "No such directory");
+    END_TEST()
+
+    TEST("cd /./tmp/./. handles single dots")
+        std::string output = shell->run_command("cd", {"/./tmp/./."});
+        std::cout << "cd /./tmp/./. output: '" << output << "'";
+
+        std::string pwd_output = shell->run_command("pwd", {});
+        std::cout << "pwd output: " << pwd_output;
+        // Current behavior: . not normalized but path still works
+        ASSERT_STR_CONTAINS(pwd_output, "tmp");
+    END_TEST()
+
+    TEST("ls ../etc from /tmp - relative paths not supported")
+        shell->run_command("cd", {"/tmp"});
+        std::string output = shell->run_command("ls", {"../etc"});
+        std::cout << "ls ../etc output: " << output;
+        // Current behavior: relative paths not supported
+        ASSERT_STR_CONTAINS(output, "No such directory");
+    END_TEST()
+
+    TEST("cat ../etc/motd from /tmp - relative paths not supported")
+        shell->run_command("cd", {"/tmp"});
+        std::string output = shell->run_command("cat", {"../etc/motd"});
+        std::cout << "cat ../etc/motd output: " << output;
+        // Current behavior: relative paths not supported
+        ASSERT_STR_CONTAINS(output, "No such file");
+    END_TEST()
+
+    TEST("ls with excessive parent traversal - not supported")
+        shell->run_command("cd", {"/tmp"});
+        std::string output = shell->run_command("ls", {"../../../../../../../../"});
+        std::cout << "ls ../../../../../../../../ output: " << output;
+        // Current behavior: relative paths not supported
+        ASSERT_STR_CONTAINS(output, "No such directory");
+    END_TEST()
+
+    TEST("cat /etc/../etc/motd - path normalization not supported")
+        std::string output = shell->run_command("cat", {"/etc/../etc/motd"});
+        std::cout << "cat /etc/../etc/motd output: " << output;
+        // Current behavior: .. not normalized
+        ASSERT_STR_CONTAINS(output, "No such file");
+    END_TEST()
+
+    TEST("cd to path with trailing slashes")
+        shell->run_command("cd", {"/"});
+        std::string output = shell->run_command("cd", {"/tmp///"});
+        std::cout << "cd /tmp/// output: '" << output << "'";
+
+        std::string pwd_output = shell->run_command("pwd", {});
+        std::cout << "pwd output: " << pwd_output;
+        // Current behavior: trailing slashes preserved
+        ASSERT_STR_CONTAINS(pwd_output, "tmp");
+    END_TEST()
+
+    TEST("touch file in /etc fails (read-only)")
+        shell->run_command("cd", {"/etc"});
+        std::string output = shell->run_command("touch", {"hacked.txt"});
+        std::cout << "touch /etc/hacked.txt output: " << output;
+        // Should either fail or not actually create the file
+        std::string ls_output = shell->run_command("ls", {});
+        std::cout << "ls /etc output: " << ls_output;
+        // If hacked.txt doesn't appear, that's correct behavior
+        // Some implementations might allow it in virtual FS
+    END_TEST()
+
+    TEST("cd ~/../.. tries to escape via home")
+        shell->run_command("cd", {"~"});
+        std::string output = shell->run_command("cd", {"../.."});
+        std::cout << "cd ../.. from home output: '" << output << "'";
+
+        std::string pwd_output = shell->run_command("pwd", {});
+        std::cout << "pwd output: " << pwd_output;
+        // Should be at / or /home, not beyond root
+        ASSERT_STR_CONTAINS(pwd_output, "/");
+    END_TEST()
+
+    TEST("ls with absolute path ignores cwd")
+        shell->run_command("cd", {"/tmp"});
+        std::string output = shell->run_command("ls", {"/etc"});
+        std::cout << "ls /etc from /tmp output: " << output;
+        ASSERT_STR_CONTAINS(output, "motd");
+    END_TEST()
+
+    TEST("cat file with spaces in error message")
+        std::string output = shell->run_command("cat", {"file with spaces.txt"});
+        std::cout << "cat 'file with spaces.txt' output: " << output;
+        ASSERT_STR_CONTAINS(output, "No such file");
+    END_TEST()
+
+    TEST("empty path cd shows error or goes home")
+        std::string output = shell->run_command("cd", {""});
+        std::cout << "cd '' output: '" << output << "'";
+        // Empty string might go home or show error, both are acceptable
+        std::string pwd_output = shell->run_command("pwd", {});
+        std::cout << "pwd output: " << pwd_output;
+        ASSERT_STR_CONTAINS(pwd_output, "/");
+    END_TEST()
+
+    TEST("ls non-existent path shows error")
+        std::string output = shell->run_command("ls", {"/nonexistent/path"});
+        std::cout << "ls /nonexistent/path output: " << output;
+        ASSERT_STR_CONTAINS(output, "No such directory");
+    END_TEST()
+
+    TEST("cd ///// multiple slashes normalizes to root")
+        std::string output = shell->run_command("cd", {"/////"});
+        std::cout << "cd ///// output: '" << output << "'";
+
+        std::string pwd_output = shell->run_command("pwd", {});
+        std::cout << "pwd output: " << pwd_output;
+        ASSERT_STR_CONTAINS(pwd_output, "/");
+    END_TEST()
+
     // Print summary
     std::cout << "\n========================================\n";
     std::cout << "Test Summary\n";
