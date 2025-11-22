@@ -16,10 +16,11 @@ namespace fs = std::filesystem;
 // --------------------------
 // Engine Constructor
 // --------------------------
-Engine::Engine(const std::string& modulesDir) 
+Engine::Engine(const std::string& modulesDir)
     : modules_dir_(modulesDir), router_(), quests_(modulesDir), should_quit_(false) {
-    
+
     quests_.load_all_quests();
+    quests_.load_state();  // Load saved quest progress
 
     // Register default engine commands - NO EXCEPTIONS for control flow
     register_command("quit", [this](const auto&) -> std::string { 
@@ -245,7 +246,19 @@ std::string Engine::dispatch_command(const std::string& cmd) {
     }
 
     // Otherwise, route to modules
-    return router_.handle_command(tokens);
+    std::string result = router_.handle_command(tokens);
+
+    // Check if any module just completed a quest
+    for (const auto& mod : router_.get_modules()) {
+        if (mod->is_quest_just_completed()) {
+            std::string quest_id = mod->get_active_quest_id();
+            std::string mod_name = mod->name();
+            quests_.mark_quest_completed(mod_name, quest_id);
+            mod->clear_quest_completion_flag();
+        }
+    }
+
+    return result;
 }
 
 // --------------------------

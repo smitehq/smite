@@ -39,4 +39,9 @@ public:
 
     // Optional: list registered command prefixes for discovery/help
     virtual std::vector<std::string> registered_prefixes() const = 0;
+
+    // Quest completion detection (for engine to detect and unlock next quests)
+    virtual std::string get_active_quest_id() const { return ""; }
+    virtual bool is_quest_just_completed() const { return false; }
+    virtual void clear_quest_completion_flag() {}
 };
