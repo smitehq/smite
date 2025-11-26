@@ -13,8 +13,6 @@ intro_text: |
   Your journey begins with a simple question: What version of kubectl
   commands this domain?
 
-  Speak the words of power: "kubectl version"
-
 condition:
   type: command_run
   command: "kubectl version"

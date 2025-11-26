@@ -9,6 +9,8 @@
 #include "module_interface.h"
 #include "router.h"
 #include "state/quest.h"
+#include "state/telemetry.h"
+#include "state/settings.h"
 
 // Forward declarations
 class Shell;
@@ -40,10 +42,18 @@ public:
     QuestManager& get_quest_manager_mutable() { return quests_; }
     Router& get_router() { return router_; }
 
+    // Telemetry access
+    TelemetryManager& get_telemetry() { return telemetry_; }
+
+    // Settings access
+    SettingsManager& get_settings() { return settings_; }
+
 private:
     std::string modules_dir_;
     Router router_;
     QuestManager quests_;
+    TelemetryManager telemetry_;
+    SettingsManager settings_;
     bool should_quit_ = false;
 
     // Cached references for performance
@@ -55,7 +65,8 @@ private:
 
     // Helpers
     std::string get_prompt();
-    
+    void prompt_telemetry_consent();
+
     // Get shell module with caching
     std::shared_ptr<Shell> get_shell_module();
 };

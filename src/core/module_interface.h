@@ -42,6 +42,11 @@ public:
 
     // Quest completion detection (for engine to detect and unlock next quests)
     virtual std::string get_active_quest_id() const { return ""; }
+    virtual bool is_quest_active() const { return !get_active_quest_id().empty(); }
     virtual bool is_quest_just_completed() const { return false; }
     virtual void clear_quest_completion_flag() {}
+
+    // Generate module-specific investigation tips based on telemetry
+    // Forward declaration to avoid circular dependency
+    virtual std::vector<std::string> generate_investigation_tips(const struct QuestTelemetry& telemetry) const { return {}; }
 };

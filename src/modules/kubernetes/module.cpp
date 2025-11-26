@@ -1232,6 +1232,63 @@ float KubernetesModule::get_elapsed_time() const {
     return elapsed.count() / 1000.0f;
 }
 
+std::vector<std::string> KubernetesModule::generate_investigation_tips(const QuestTelemetry& telemetry) const {
+    std::vector<std::string> tips;
+
+    // Count diagnostic command types (kubectl-specific)
+    bool checked_logs = false;
+    bool used_describe = false;
+    bool checked_events = false;
+    int diagnostic_count = 0;
+    int same_command_count = 0;
+    std::map<std::string, int> command_freq;
+
+    for (const auto& cmd : telemetry.commands) {
+        command_freq[cmd.full_input]++;
+        if (same_command_count < command_freq[cmd.full_input]) {
+            same_command_count = command_freq[cmd.full_input];
+        }
+
+        // Check for kubectl diagnostic commands
+        if (cmd.command == "logs" || cmd.full_input.find("logs") != std::string::npos) {
+            if (!checked_logs) diagnostic_count++;
+            checked_logs = true;
+        }
+        if (cmd.command == "describe" || cmd.full_input.find("describe") != std::string::npos) {
+            if (!used_describe) diagnostic_count++;
+            used_describe = true;
+        }
+        if (cmd.full_input.find("events") != std::string::npos || cmd.full_input.find("get events") != std::string::npos) {
+            if (!checked_events) diagnostic_count++;
+            checked_events = true;
+        }
+    }
+
+    int minutes = telemetry.get_duration_minutes();
+
+    // Generate kubectl-specific tips
+    if (!checked_logs) {
+        tips.push_back("[TIP] Always check pod logs with `kubectl logs`");
+    }
+    if (!used_describe) {
+        tips.push_back("[TIP] Use `kubectl describe` for detailed events");
+    }
+    if (diagnostic_count < 2 && telemetry.commands.size() > 0) {
+        tips.push_back("[!] Investigate before applying fixes!");
+    }
+    if (same_command_count > 3) {
+        tips.push_back("[TIP] Try different approaches if stuck");
+    }
+    if (telemetry.hints_used > 2) {
+        tips.push_back("[TIP] Challenge yourself with less hints");
+    }
+    if (minutes < 2 && diagnostic_count < 2) {
+        tips.push_back("[*] Fast! Try thorough investigation next time");
+    }
+
+    return tips;
+}
+
 // Factory
 std::shared_ptr<SmiteModule> create_module_kubernetes() {
     return std::make_shared<KubernetesModule>();

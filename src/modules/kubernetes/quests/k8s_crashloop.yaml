@@ -66,6 +66,7 @@ condition:
 
 reward_xp: 100
 reward_item: "golden_kubeconfig"
+root_cause: "Missing database credentials secret (db-secret)"
 
 completion_message: |
   The backend pod springs back to life! Database credentials secured,

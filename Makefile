@@ -89,7 +89,7 @@ clean:
 	$(RM) -rf build dist $(TARGET)
 
 # Run all tests
-test: test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday
+tests: test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings
 
 # K8s Quest Test
 test-k8s-quest: build/tests/test_k8s_quest.o $(SRC_OBJS)
@@ -115,6 +115,16 @@ test-k8s-spec: build/tests/test_k8s_spec_quests.o $(SRC_OBJS)
 test-k8s-black-friday: build/tests/test_k8s_black_friday.o $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) build/tests/test_k8s_black_friday.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_black_friday$(EXE_SUFFIX) $(LDFLAGS)
 	./build/tests/test_k8s_black_friday$(EXE_SUFFIX)
+
+# Telemetry Test
+test-telemetry: build/tests/test_telemetry.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_telemetry.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_telemetry$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_telemetry$(EXE_SUFFIX)
+
+# Settings Test
+test-settings: build/tests/test_settings.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_settings.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_settings$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_settings$(EXE_SUFFIX)
 
 build/tests/%.o: tests/%.cpp
 	@$(MKDIR) -p $(dir $@)
@@ -149,4 +159,4 @@ show-sources:
 	@echo "Source files:"
 	@echo $(SRC_SRCS) | tr ' ' '\n'
 
-.PHONY: clean test release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday
+.PHONY: clean test release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings

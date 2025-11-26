@@ -1,4 +1,6 @@
 #include "quest.h"
+#include "telemetry.h"
+#include "core/module_interface.h"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -23,6 +25,8 @@ void QuestManager::load_all_quests() {
             q.title = qyaml["title"].as<std::string>();
             q.description = qyaml["description"].as<std::string>();
             q.intro_text = qyaml["intro_text"].as<std::string>("");
+            q.completion_message = qyaml["completion_message"].as<std::string>("");
+            q.root_cause = qyaml["root_cause"].as<std::string>("");
 
             // Load difficulty
             std::string diff = qyaml["difficulty"].as<std::string>("beginner");
@@ -47,21 +51,21 @@ void QuestManager::load_all_quests() {
 
             q.condition = qyaml["condition"];
             q.reward_xp = qyaml["reward_xp"].as<int>(0);
-            quests.push_back(q);
+            quests.push_back(std::move(q));
         }
-        quests_by_module[mod_name] = quests;
+        quests_by_module[mod_name] = std::move(quests);
 
         // Initialize starter quests as unlocked for each module
         // Unlock all beginner and intermediate quests as starting points
-        for (const auto& q : quests) {
+        for (const auto& q : quests_by_module[mod_name]) {
             if (q.difficulty == QuestDifficulty::BEGINNER ||
                 q.difficulty == QuestDifficulty::INTERMEDIATE) {
                 unlocked_quests_per_module[mod_name].insert(q.id);
             }
         }
         // If no beginner/intermediate quests, unlock the first quest
-        if (unlocked_quests_per_module[mod_name].empty() && !quests.empty()) {
-            unlocked_quests_per_module[mod_name].insert(quests[0].id);
+        if (unlocked_quests_per_module[mod_name].empty() && !quests_by_module[mod_name].empty()) {
+            unlocked_quests_per_module[mod_name].insert(quests_by_module[mod_name][0].id);
         }
     }
 }
@@ -289,6 +293,103 @@ void QuestManager::mark_quest_completed(const std::string& mod_name, const std::
 
     // Save state after completing quest
     save_state();
+}
+
+std::string QuestManager::generate_post_mortem(const std::string& mod_name, const std::string& quest_id, const TelemetryManager& telemetry, const SmiteModule* module) const {
+    const Quest* quest = get_quest(mod_name, quest_id);
+    const QuestTelemetry* telem = telemetry.get_active_telemetry(mod_name);
+
+    if (!quest || !telem) {
+        return "";  // No telemetry data available
+    }
+
+    std::ostringstream report;
+
+    // Header
+    report << "\n";
+    report << "+============================================+\n";
+    report << "|          POST-MORTEM REPORT                |\n";
+    report << "+============================================+\n";
+
+    // Time and root cause
+    int minutes = telem->get_duration_minutes();
+    int seconds = telem->get_duration_seconds() % 60;
+    report << "| Time to Resolution: " << minutes << "m " << seconds << "s";
+
+    // Pad to align properly
+    std::string time_str = std::to_string(minutes) + "m " + std::to_string(seconds) + "s";
+    int padding = 44 - 21 - time_str.length() - 1;
+    for (int i = 0; i < padding; i++) report << " ";
+    report << "|\n";
+
+    // Root cause
+    if (!quest->root_cause.empty()) {
+        report << "| Root Cause: " << quest->root_cause;
+        padding = 44 - 13 - quest->root_cause.length() - 1;
+        for (int i = 0; i < padding; i++) report << " ";
+        report << "|\n";
+    }
+
+    report << "|                                            |\n";
+
+    // XP Breakdown
+    int time_bonus = telemetry.calculate_time_bonus(minutes);
+    report << "| XP Earned:                                 |\n";
+
+    std::string base_xp_str = "  Base: +" + std::to_string(quest->reward_xp);
+    report << "| " << base_xp_str;
+    padding = 44 - 1 - base_xp_str.length() - 1;
+    for (int i = 0; i < padding; i++) report << " ";
+    report << "|\n";
+
+    if (time_bonus > 0) {
+        std::string bonus_str = "  Speed Bonus: +" + std::to_string(time_bonus);
+        report << "| " << bonus_str;
+        padding = 44 - 1 - bonus_str.length() - 1;
+        for (int i = 0; i < padding; i++) report << " ";
+        report << "|\n";
+    }
+
+    std::string total_str = "  Total: " + std::to_string(telem->xp_earned);
+    report << "| " << total_str;
+    padding = 44 - 1 - total_str.length() - 1;
+    for (int i = 0; i < padding; i++) report << " ";
+    report << "|\n";
+
+    report << "|                                            |\n";
+
+    // Get module-specific investigation tips
+    std::vector<std::string> tips;
+    if (module) {
+        tips = module->generate_investigation_tips(*telem);
+    }
+
+    // Show tips
+    if (!tips.empty()) {
+        report << "| Tips for Next Time:                       |\n";
+        for (const auto& tip : tips) {
+            // Wrap long tips if needed
+            if (tip.length() <= 42) {
+                report << "| " << tip;
+                padding = 44 - 1 - tip.length() - 1;
+                for (int i = 0; i < padding; i++) report << " ";
+                report << "|\n";
+            } else {
+                // For now, just truncate - proper wrapping would be more complex
+                std::string truncated = tip.substr(0, 40) + "..";
+                report << "| " << truncated;
+                padding = 44 - 1 - truncated.length() - 1;
+                for (int i = 0; i < padding; i++) report << " ";
+                report << "|\n";
+            }
+        }
+        report << "|                                            |\n";
+    }
+
+    // Footer
+    report << "+============================================+\n";
+
+    return report.str();
 }
 
 bool QuestManager::is_quest_unlocked(const std::string& mod_name, const std::string& quest_id) const {

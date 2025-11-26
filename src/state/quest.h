@@ -17,6 +17,8 @@ struct Quest {
     std::string title;
     std::string description;
     std::string intro_text;  // Story/intro shown on activation
+    std::string completion_message;  // Message shown on quest completion
+    std::string root_cause;  // Root cause description for post-mortem
     std::vector<std::string> hints;  // Progressive hints
     YAML::Node condition;
     int reward_xp;
@@ -48,6 +50,9 @@ public:
 
     // Quest completion celebration (static so modules can call it directly)
     static std::string quest_accomplished(const std::string& completion_message);
+
+    // Generate post-mortem report with telemetry analysis
+    std::string generate_post_mortem(const std::string& mod_name, const std::string& quest_id, const class TelemetryManager& telemetry, const class SmiteModule* module) const;
 
     // Persistence
     void save_state();

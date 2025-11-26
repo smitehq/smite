@@ -2,4 +2,5 @@ build
 dist
 *.exe
 *.pdb
-.smite_history
+.claude
+.smite

@@ -2,6 +2,7 @@
 #define MODULES_KUBERNETES_MODULE_H
 
 #include "core/module_interface.h"
+#include "state/telemetry.h"
 #include <yaml-cpp/yaml.h>
 #include <string>
 #include <vector>
@@ -177,6 +178,7 @@ public:
     std::vector<std::string> registered_prefixes() const override;
     bool activate_quest(const std::string& quest_id) override;
     std::string check_quest_completion();  // Check if active quest is complete and return completion message
+    std::vector<std::string> generate_investigation_tips(const QuestTelemetry& telemetry) const override;
     std::string get_active_quest_id() const override { return active_quest_id; }
     bool is_quest_just_completed() const override { return quest_just_completed; }
     void clear_quest_completion_flag() override { quest_just_completed = false; }

@@ -17,10 +17,13 @@ namespace fs = std::filesystem;
 // Engine Constructor
 // --------------------------
 Engine::Engine(const std::string& modulesDir)
-    : modules_dir_(modulesDir), router_(), quests_(modulesDir), should_quit_(false) {
+    : modules_dir_(modulesDir), router_(), quests_(modulesDir), settings_(), should_quit_(false) {
 
     quests_.load_all_quests();
     quests_.load_state();  // Load saved quest progress
+
+    // Apply telemetry settings
+    telemetry_.set_telemetry_enabled(settings_.is_telemetry_enabled());
 
     // Register default engine commands - NO EXCEPTIONS for control flow
     register_command("quit", [this](const auto&) -> std::string { 
@@ -39,7 +42,7 @@ Engine::Engine(const std::string& modulesDir)
         for (const auto& c : router_.list_commands()) {
             oss << "  " << c << "\n";
         }
-        oss << "Other engine commands: modules, quests, hint, quit\n";
+        oss << "Other engine commands: modules, quests, hint, settings, quit\n";
         return oss.str();
     });
 
@@ -72,7 +75,35 @@ Engine::Engine(const std::string& modulesDir)
             return "No active quest. Activate a quest first with: quests <module> <quest_id>\n";
         }
 
+        // Track hint usage in telemetry
+        telemetry_.track_hint_used(active_module);
+
         return quests_.get_next_hint(active_module);
+    });
+
+    register_command("settings", [this](const auto& args) -> std::string {
+        if (args.size() == 1) {
+            // Display current settings
+            std::ostringstream oss;
+            oss << "Current Settings:\n";
+            oss << "  telemetry: " << (settings_.is_telemetry_enabled() ? "enabled" : "disabled") << "\n";
+            oss << "\nUsage: settings telemetry <enable|disable>\n";
+            return oss.str();
+        }
+
+        if (args.size() >= 3 && args[1] == "telemetry") {
+            if (args[2] == "enable") {
+                settings_.set_telemetry_enabled(true);
+                telemetry_.set_telemetry_enabled(true);
+                return "Telemetry enabled. Quest data will be tracked for post-mortem analysis.\n";
+            } else if (args[2] == "disable") {
+                settings_.set_telemetry_enabled(false);
+                telemetry_.set_telemetry_enabled(false);
+                return "Telemetry disabled. Quest data will not be tracked.\n";
+            }
+        }
+
+        return "Usage: settings telemetry <enable|disable>\n";
     });
 
     register_command("quests", [this](const auto& args) -> std::string {
@@ -109,6 +140,9 @@ Engine::Engine(const std::string& modulesDir)
                 return fmt::format("Module not found: {}\n", mod);
             }
             mod_ptr->activate_quest(quest_id);
+
+            // Start telemetry tracking for this quest
+            telemetry_.start_quest_tracking(mod, quest_id);
 
             // Display epic quest activation message
             std::string output = "\n";
@@ -153,6 +187,9 @@ Engine::Engine(const std::string& modulesDir)
             return fmt::format("Module not found: {}\n", mod);
         }
         mod_ptr->activate_quest(quest_id);
+
+        // Start telemetry tracking for this quest
+        telemetry_.start_quest_tracking(mod, quest_id);
 
         // Display epic quest activation message
         std::string output = "\n";
@@ -245,6 +282,14 @@ std::string Engine::dispatch_command(const std::string& cmd) {
         return it->second(tokens);
     }
 
+    // Track command for telemetry (for all active quests)
+    for (const auto& mod : router_.get_modules()) {
+        if (mod->is_quest_active()) {
+            std::string command_name = tokens[0];
+            telemetry_.track_command(mod->name(), command_name, cmd);
+        }
+    }
+
     // Otherwise, route to modules
     std::string result = router_.handle_command(tokens);
 
@@ -253,6 +298,18 @@ std::string Engine::dispatch_command(const std::string& cmd) {
         if (mod->is_quest_just_completed()) {
             std::string quest_id = mod->get_active_quest_id();
             std::string mod_name = mod->name();
+
+            // Get quest info for XP
+            const Quest* quest = quests_.get_quest(mod_name, quest_id);
+            if (quest) {
+                // Complete telemetry tracking
+                telemetry_.complete_quest_tracking(mod_name, quest_id, quest->reward_xp);
+
+                // Generate and append post-mortem report (pass module for tips generation)
+                std::string post_mortem = quests_.generate_post_mortem(mod_name, quest_id, telemetry_, mod.get());
+                result += post_mortem;
+            }
+
             quests_.mark_quest_completed(mod_name, quest_id);
             mod->clear_quest_completion_flag();
         }
@@ -275,11 +332,65 @@ std::shared_ptr<Shell> Engine::get_shell_module() {
 }
 
 // --------------------------
+// Helper: Get History File Path
+// --------------------------
+std::string get_history_file_path() {
+    auto settings_path = SettingsManager::get_settings_path();
+    auto smite_dir = settings_path.parent_path();
+    return (smite_dir / ".history").string();
+}
+
+// --------------------------
+// Telemetry Consent Prompt
+// --------------------------
+void Engine::prompt_telemetry_consent() {
+    std::cout << "\n";
+    std::cout << "========================================================================\n";
+    std::cout << "                      Telemetry Settings                                \n";
+    std::cout << "========================================================================\n";
+    std::cout << "\n";
+    std::cout << "Smite can track your quest progress to provide post-mortem analysis\n";
+    std::cout << "after quest completion. This includes:\n";
+    std::cout << "  - Commands executed during quests\n";
+    std::cout << "  - Time taken to complete quests\n";
+    std::cout << "  - Hints used\n";
+    std::cout << "  - Investigation tips based on your approach\n";
+    std::cout << "\n";
+    std::cout << "All data is stored locally and never sent anywhere.\n";
+    std::cout << "\n";
+    std::cout << "Would you like to enable telemetry? (y/n): ";
+    std::cout.flush();
+
+    std::string response;
+    std::getline(std::cin, response);
+    response = Utils::trim(response);
+
+    bool enabled = (response == "y" || response == "Y" || response == "yes" || response == "Yes" || response == "YES");
+
+    settings_.set_telemetry_enabled(enabled);
+    telemetry_.set_telemetry_enabled(enabled);
+
+    std::cout << "\n";
+    if (enabled) {
+        std::cout << "Telemetry enabled. You can change this anytime with: settings telemetry disable\n";
+    } else {
+        std::cout << "Telemetry disabled. You can change this anytime with: settings telemetry enable\n";
+    }
+    std::cout << "\n";
+}
+
+// --------------------------
 // REPL
 // --------------------------
 void Engine::repl() {
-    // Load previous history
-    read_history(".smite_history");
+    // Load previous history from ~/.smite/.history
+    std::string history_file = get_history_file_path();
+    read_history(history_file.c_str());
+
+    // Prompt for telemetry consent on first run
+    if (!settings_.has_telemetry_preference()) {
+        prompt_telemetry_consent();
+    }
 
     // Setup for auto-completion
     auto shell = get_shell_module();
@@ -340,8 +451,8 @@ void Engine::repl() {
         std::cout << std::endl;
     }
 
-    // Save history
-    write_history(".smite_history");
+    // Save history to ~/.smite/.history (reuse variable from earlier)
+    write_history(history_file.c_str());
     std::cout << "Exiting REPL.\n";
 }
 
