@@ -1,6 +1,5 @@
 id: k8s_node_drain
 title: "The Dying Node"
-available: false
 description: "Safely evacuate pods from a failing node."
 difficulty: expert
 

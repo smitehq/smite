@@ -60,4 +60,11 @@ cluster:
       available_replicas: 2
       image: test:old
       age: "5d"
+  resourcequotas:
+    - name: pods-medium
+      age: "2d"
+      hard:
+        pods: "10"
+      used:
+        pods: "10"
   services: []

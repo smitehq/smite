@@ -5,12 +5,37 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <vector>
 
 namespace kubectl_commands {
 
 inline auto cmd_get_pods(KubernetesModule* module) {
     return [module](const std::vector<std::string>& args) -> std::string  {
-        bool wide = !args.empty() && (args[0] == "wide" || (args[0] == "-o" && args.size() > 1 && args[1] == "wide"));
+        bool wide = false;
+        bool show_labels = false;
+        for (size_t i = 0; i < args.size(); ++i) {
+            if (args[i] == "--show-labels") {
+                show_labels = true;
+            } else if (args[i] == "wide" || args[i] == "-o=wide") {
+                wide = true;
+            } else if (args[i] == "-o" && i + 1 < args.size() && args[i + 1] == "wide") {
+                wide = true;
+                ++i;
+            }
+        }
+
+        auto format_labels = [](const Pod& pod) {
+            if (pod.labels.empty()) return std::string("<none>");
+            std::vector<std::pair<std::string, std::string>> labels(pod.labels.begin(), pod.labels.end());
+            std::sort(labels.begin(), labels.end());
+            std::string text;
+            for (size_t i = 0; i < labels.size(); ++i) {
+                if (i) text += ",";
+                text += labels[i].first + "=" + labels[i].second;
+            }
+            return text;
+        };
+
         std::ostringstream out;
 
         size_t name_width   = 4;
@@ -20,6 +45,7 @@ inline auto cmd_get_pods(KubernetesModule* module) {
         size_t node_width   = 4;
         size_t ip_width     = 2;
         size_t image_width  = 5;
+        size_t label_width  = 6;
 
         // Compute column widths
         for (const auto& node : module->get_nodes()) {
@@ -30,6 +56,9 @@ inline auto cmd_get_pods(KubernetesModule* module) {
                 rest_width   = std::max(rest_width, std::to_string(p.restarts).size());
                 ip_width     = std::max(ip_width, p.ip.empty() ? 10u : p.ip.size());
                 image_width  = std::max(image_width, p.image.empty() ? 16u : p.image.size());
+                if (show_labels) {
+                    label_width = std::max(label_width, format_labels(p).size());
+                }
             }
         }
 
@@ -44,6 +73,9 @@ inline auto cmd_get_pods(KubernetesModule* module) {
             out << std::setw(node_width+2) << "NODE"
                 << std::setw(ip_width+2)   << "IP"
                 << std::setw(image_width+2)<< "IMAGE";
+        }
+        if (show_labels) {
+            out << std::setw(label_width + 2) << "LABELS";
         }
 
         out << "\n";
@@ -61,6 +93,9 @@ inline auto cmd_get_pods(KubernetesModule* module) {
                     out << std::setw(node_width+2) << node.name
                         << std::setw(ip_width+2)   << (p.ip.empty() ? "10.244.0.0" : p.ip)
                         << std::setw(image_width+2)<< (p.image.empty() ? "placeholder:v1" : p.image);
+                }
+                if (show_labels) {
+                    out << format_labels(p);
                 }
 
                 out << "\n";

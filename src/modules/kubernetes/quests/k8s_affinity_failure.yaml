@@ -1,6 +1,5 @@
 id: k8s_affinity_failure
 title: "The Unschedulable Pod"
-available: false
 description: "Fix pod affinity rules preventing scheduling."
 difficulty: advanced
 
