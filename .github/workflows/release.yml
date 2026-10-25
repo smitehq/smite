@@ -314,7 +314,10 @@ jobs:
         run: |
           set -euo pipefail
           make show-platform
-          platform="$(make -s show-platform | awk -F': ' '/^Platform:/ { print $2; exit }')"
+          # Read print-platform, not show-platform. awk exiting after the
+          # Platform line closes the pipe under pipefail and fails this step
+          # with SIGPIPE / EPIPE before make dist.
+          platform="$(make -s print-platform)"
           if [[ "$platform" != "linux-arm64" ]]; then
             echo "This runner must package linux-arm64, but PLATFORM is '${platform}'." >&2
             exit 1
@@ -402,7 +405,10 @@ jobs:
         run: |
           set -euo pipefail
           make show-platform
-          platform="$(make -s show-platform | awk -F': ' '/^Platform:/ { print $2; exit }')"
+          # Read print-platform, not show-platform. awk exiting after the
+          # Platform line closes the pipe under pipefail and fails this step
+          # with SIGPIPE / EPIPE before make dist.
+          platform="$(make -s print-platform)"
           if [[ "$platform" != "macos-arm64" ]]; then
             echo "This runner must package macos-arm64, but PLATFORM is '${platform}'." >&2
             exit 1
