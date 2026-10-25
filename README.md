@@ -52,6 +52,14 @@ After that first completion, smite asks whether to keep a local post-mortem (com
 
 ## Install
 
+### Linux amd64 release
+
+A version tag (`0.2.0` or `v0.2.0`) publishes `smite-<version>-linux-amd64.tar.gz` on [GitHub Releases](https://github.com/smitehq/smite/releases). The archive contains the `smite` binary, `LICENSE`, `README.md`, and the Kubernetes quest and state YAML under `src/modules/`. Unpack it and run `./smite`. The binary loads `src/modules` from beside itself. Set `SMITE_DATA` to that `src/modules` directory if you relocate the binary.
+
+The binary links yaml-cpp, fmt, readline, and ncurses dynamically. Install those shared libraries on the machine that runs it.
+
+### Build from source
+
 Clang++ with C++20, plus yaml-cpp, fmt, readline, and ncurses.
 
 ```bash
@@ -168,7 +176,7 @@ make tests      # unit tests
 make clean && make
 ```
 
-`make release` and `make dist` produce a stripped binary and a tarball. Windows builds are statically linked; Linux and macOS link the libraries listed above.
+`make release` and `make dist` produce a stripped binary and a tarball (`dist/smite-<version>-linux-amd64.tar.gz` on Linux). Pushing a version tag runs that `make dist` in GitHub Actions and uploads the archive to the release. Windows builds are statically linked; Linux and macOS link the libraries listed above.
 
 ---
 

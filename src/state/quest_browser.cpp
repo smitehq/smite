@@ -1,6 +1,11 @@
 #include "quest_browser.h"
 #include "core/router.h"
+// libncurses-dev on Ubuntu provides <ncurses.h>; other layouts provide <ncurses/ncurses.h>.
+#if __has_include(<ncurses/ncurses.h>)
 #include <ncurses/ncurses.h>
+#else
+#include <ncurses.h>
+#endif
 #include <algorithm>
 #include <sstream>
 

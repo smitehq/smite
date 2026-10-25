@@ -1,5 +1,10 @@
 #include "nano.h"
+// libncurses-dev on Ubuntu provides <ncurses.h>; other layouts provide <ncurses/ncurses.h>.
+#if __has_include(<ncurses/ncurses.h>)
 #include <ncurses/ncurses.h>
+#else
+#include <ncurses.h>
+#endif
 #include <fstream>
 #include <vector>
 #include <string>
