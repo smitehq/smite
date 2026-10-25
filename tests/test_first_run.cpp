@@ -295,10 +295,16 @@ TEST("First launch starts k8s_first_steps and completion prints Next")
     ASSERT_TRUE(engine.get_quest_manager().is_active("kubernetes", "k8s_first_steps"));
     ASSERT_TRUE(engine.begin_first_quest_if_needed().empty());
 
+    std::string pods = engine.dispatch_command("kubectl get pods");
+    ASSERT_TRUE(pods.find("QUEST COMPLETE") == std::string::npos);
+    ASSERT_TRUE(!engine.consume_quest_celebration());
+
     std::string done = engine.dispatch_command("kubectl version");
     ASSERT_TRUE(done.find("QUEST COMPLETE") != std::string::npos);
     ASSERT_TRUE(done.find("Next:") != std::string::npos);
     ASSERT_TRUE(done.find("k8s_reading_logs") != std::string::npos);
+    ASSERT_TRUE(engine.consume_quest_celebration());
+    ASSERT_TRUE(!engine.consume_quest_celebration());
 
     Engine returning("src/modules");
     ASSERT_TRUE(returning.begin_first_quest_if_needed().empty());

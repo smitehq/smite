@@ -52,6 +52,9 @@ public:
     // Settings access
     SettingsManager& get_settings() { return settings_; }
 
+    // Set when the command that just ran completed a quest. Clears the flag.
+    bool consume_quest_celebration();
+
 private:
     std::string modules_dir_;
     Router router_;
@@ -71,9 +74,11 @@ private:
     std::string get_prompt();
     void prompt_telemetry_consent();
     void flush_telemetry_prompt();
+    void play_quest_celebration();
     std::string activate_named_quest(const std::string& mod, const std::string& quest_id);
 
     bool pending_telemetry_prompt_ = false;
+    bool quest_completed_this_command_ = false;
     bool first_quest_started_ = false;
 
     // Get shell module with caching
