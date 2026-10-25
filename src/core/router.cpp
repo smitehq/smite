@@ -3,7 +3,8 @@
 #include <sstream>
 #include <algorithm>
 #include <iostream>
-#include <fmt/core.h>
+// MSYS2 fmt 12 declares fmt::format in <fmt/format.h>.
+#include <fmt/format.h>
 
 void Router::add_module(std::shared_ptr<SmiteModule> module) {
     if (!module) {

@@ -58,6 +58,10 @@ A version tag (`0.2.0` or `v0.2.0`) publishes `smite-<version>-linux-amd64.tar.g
 
 The binary links yaml-cpp, fmt, readline, and ncurses dynamically. Install those shared libraries on the machine that runs it.
 
+### Windows amd64 release
+
+The same version tag publishes `smite-<version>-windows-amd64.tar.gz` next to the Linux archive. The layout matches: `smite.exe`, `LICENSE`, `README.md`, and the Kubernetes quest and state YAML under `src/modules/`. The executable is statically linked, so it does not need the MSYS2 DLLs. Unpack it and run `smite.exe`. It loads `src/modules` from beside itself. Set `SMITE_DATA` to that `src/modules` directory if you relocate the executable.
+
 ### Build from source
 
 Clang++ with C++20, plus yaml-cpp, fmt, readline, and ncurses.
@@ -176,7 +180,7 @@ make tests      # unit tests
 make clean && make
 ```
 
-`make release` and `make dist` produce a stripped binary and a tarball (`dist/smite-<version>-linux-amd64.tar.gz` on Linux). Pushing a version tag runs that `make dist` in GitHub Actions and uploads the archive to the release. Windows builds are statically linked; Linux and macOS link the libraries listed above.
+`make release` and `make dist` produce a stripped binary and a tarball (`dist/smite-<version>-linux-amd64.tar.gz` on Linux, `dist/smite-<version>-windows-amd64.tar.gz` on Windows). Pushing a version tag runs that `make dist` on Linux and Windows and uploads both archives to the release. Windows builds are statically linked; Linux and macOS link the libraries listed above.
 
 ---
 

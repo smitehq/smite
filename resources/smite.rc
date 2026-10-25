@@ -1,0 +1,45 @@
+#include <winver.h>
+
+#ifndef VER_MAJOR
+#define VER_MAJOR @VER_MAJOR@
+#endif
+#ifndef VER_MINOR
+#define VER_MINOR @VER_MINOR@
+#endif
+#ifndef VER_PATCH
+#define VER_PATCH @VER_PATCH@
+#endif
+#ifndef VER_STRING
+#define VER_STRING "@VERSION@"
+#endif
+
+1 ICON "smite.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION VER_MAJOR,VER_MINOR,VER_PATCH,0
+PRODUCTVERSION VER_MAJOR,VER_MINOR,VER_PATCH,0
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE 0x0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "Nascent Solutions, LLC"
+            VALUE "FileDescription", "smite.sh - DevOps Troubleshooting Simulator"
+            VALUE "FileVersion", VER_STRING
+            VALUE "InternalName", "smite"
+            VALUE "LegalCopyright", "Copyright (c) 2024 Nascent Solutions, LLC"
+            VALUE "OriginalFilename", "smite.exe"
+            VALUE "ProductName", "smite.sh"
+            VALUE "ProductVersion", VER_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

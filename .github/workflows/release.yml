@@ -128,3 +128,107 @@ jobs:
           else
             gh release create "$tag" "$archive" --title "$title" --notes-file dist/release-notes.md
           fi
+
+  windows-amd64:
+    name: Windows amd64
+    # The Linux job creates the GitHub Release. This job then uploads the
+    # Windows archive to that same tag. windows-latest is Windows Server 2025;
+    # pinned so a later move of the label does not change the artifact.
+    needs: linux-amd64
+    runs-on: windows-2025
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install MSYS2 MinGW64 toolchain
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          # Inherit the runner PATH so `gh` is available beside MinGW tools.
+          # Minimal would hide GitHub CLI. MSYS2 paths still come first.
+          path-type: inherit
+          # Same toolchain as the Makefile and README: MSYS2 mingw64 clang++
+          # at C:/msys64/mingw64, static yaml-cpp, fmt, ncurses, and readline.
+          install: >-
+            make
+            mingw-w64-x86_64-clang
+            mingw-w64-x86_64-binutils
+            mingw-w64-x86_64-yaml-cpp
+            mingw-w64-x86_64-fmt
+            mingw-w64-x86_64-ncurses
+            mingw-w64-x86_64-readline
+
+      - name: Resolve version
+        id: version
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag '${tag}' is not a release version (expected 0.2.0 or v0.2.0)." >&2
+            exit 1
+          fi
+          makefile_version="$(awk -F ' := ' '/^VERSION := / { gsub(/[[:space:]]/, "", $2); print $2; exit }' Makefile)"
+          globals_version="$(sed -n 's/.*GAME_VERSION = "\([^"]*\)".*/\1/p' src/globals.h | head -n 1)"
+          if [[ "$makefile_version" != "$version" || "$globals_version" != "$version" ]]; then
+            echo "Tag version ${version} does not match Makefile (${makefile_version}) and src/globals.h (${globals_version})." >&2
+            exit 1
+          fi
+          output="$(cygpath -u "$GITHUB_OUTPUT")"
+          echo "version=${version}" >> "$output"
+          echo "tag=${tag}" >> "$output"
+          echo "Resolved ${tag} -> smite-${version}-windows-amd64.tar.gz"
+
+      - name: Build distribution archive
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          make dist VERSION="${{ steps.version.outputs.version }}"
+
+      - name: Check archive layout
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          archive="dist/smite-${version}-windows-amd64.tar.gz"
+          root="smite-${version}-windows-amd64"
+          test -f "$archive"
+          tar -tzf "$archive" | tr -d '\r' | sort > dist/archive-list.txt
+          for path in \
+            "${root}/smite.exe" \
+            "${root}/LICENSE" \
+            "${root}/README.md" \
+            "${root}/src/modules/kubernetes/state/default.yaml" \
+            "${root}/src/modules/kubernetes/quests/k8s_first_steps.yaml"
+          do
+            grep -qx "$path" dist/archive-list.txt
+          done
+          "./dist/${root}/smite.exe" --version | tr -d '\r' | grep -F "smite.sh ${version}"
+          dlls="$(objdump -p "dist/${root}/smite.exe" | sed -n 's/^[[:space:]]*DLL Name: //p' | tr -d '\r')"
+          printf '%s\n' "$dlls"
+          if ! printf '%s\n' "$dlls" | grep -qx 'KERNEL32.dll'; then
+            echo "objdump did not report KERNEL32.dll for smite.exe" >&2
+            exit 1
+          fi
+          # The 0.1.0-alpha Windows build imported only KERNEL32, msvcrt, and
+          # USER32. Reject MinGW and library DLLs so the archive stays static.
+          if printf '%s\n' "$dlls" | grep -Eiq 'yaml|libfmt|fmt-|ncurses|readline|termcap|stdc\+\+|libgcc|winpthread|libssp|msys-'; then
+            echo "smite.exe still imports non-system libraries" >&2
+            exit 1
+          fi
+
+      - name: Publish Windows asset
+        shell: msys2 {0}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          version="${{ steps.version.outputs.version }}"
+          archive="dist/smite-${version}-windows-amd64.tar.gz"
+          # gh.exe is a Windows binary. Hand it a Windows path so MSYS does not
+          # rewrite the archive argument.
+          archive_win="$(cygpath -w "$archive")"
+          gh release upload "$tag" "$archive_win" --clobber
