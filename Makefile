@@ -89,7 +89,7 @@ clean:
 	$(RM) -rf build dist $(TARGET)
 
 # Run all tests
-tests: test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run
+tests: test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run test-k8s-scale
 
 # K8s Quest Test
 test-k8s-quest: build/tests/test_k8s_quest.o $(SRC_OBJS)
@@ -131,6 +131,11 @@ test-first-run: build/tests/test_first_run.o $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) build/tests/test_first_run.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_first_run$(EXE_SUFFIX) $(LDFLAGS)
 	./build/tests/test_first_run$(EXE_SUFFIX)
 
+# kubectl scale argument routing
+test-k8s-scale: build/tests/test_k8s_scale.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_k8s_scale.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_scale$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_k8s_scale$(EXE_SUFFIX)
+
 build/tests/%.o: tests/%.cpp
 	@$(MKDIR) -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -164,4 +169,4 @@ show-sources:
 	@echo "Source files:"
 	@echo $(SRC_SRCS) | tr ' ' '\n'
 
-.PHONY: clean test tests release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run
+.PHONY: clean test tests release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run test-k8s-scale

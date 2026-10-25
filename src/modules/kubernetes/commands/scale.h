@@ -2,63 +2,72 @@
 #define K8S_COMMANDS_SCALE_H
 
 #include "modules/kubernetes/module.h"
-#include <sstream>
 #include <string>
 
 namespace k8s_commands {
 
 inline auto cmd_scale(KubernetesModule* mod) {
     return [mod](const std::vector<std::string>& args) -> std::string {
-        // kubectl scale deployment <name> --replicas=<count>
+        // Registered prefixes are "kubectl scale deployment" and "kubectl scale deploy".
+        // The router strips that prefix, so args start at the deployment name:
+        // <name> --replicas=<count> or <name> --replicas <count>.
 
-        if (args.size() < 3) {
-            return "Error: kubectl scale requires resource type, name, and --replicas flag\n"
-                   "Usage: kubectl scale deployment <name> --replicas=<count>\n";
+        const std::string usage =
+            "Usage: kubectl scale deployment <name> --replicas=<count>\n";
+
+        if (args.empty() || args[0].empty() || args[0][0] == '-') {
+            return "Error: kubectl scale requires a deployment name and --replicas flag\n" + usage;
         }
 
-        std::string resource_type = args[0];
-        std::string resource_name = args[1];
+        const std::string resource_name = args[0];
 
-        // Parse --replicas=N
         int new_replicas = 0;
         bool found_replicas = false;
-        for (size_t i = 2; i < args.size(); ++i) {
+
+        auto read_replicas = [](const std::string& value, int& out) -> bool {
+            if (value.empty()) return false;
+            try {
+                size_t consumed = 0;
+                const int parsed = std::stoi(value, &consumed);
+                if (consumed != value.size() || parsed < 0) return false;
+                out = parsed;
+                return true;
+            } catch (...) {
+                return false;
+            }
+        };
+
+        for (size_t i = 1; i < args.size(); ++i) {
             if (args[i].find("--replicas=") == 0) {
-                try {
-                    new_replicas = std::stoi(args[i].substr(11));
-                    found_replicas = true;
-                } catch (...) {
+                const std::string value = args[i].substr(std::string("--replicas=").size());
+                if (!read_replicas(value, new_replicas)) {
                     return "Error: Invalid replicas value\n";
                 }
+                found_replicas = true;
+            } else if (args[i] == "--replicas") {
+                if (i + 1 >= args.size() || !read_replicas(args[i + 1], new_replicas)) {
+                    return "Error: Invalid replicas value\n";
+                }
+                ++i;
+                found_replicas = true;
             }
         }
 
         if (!found_replicas) {
-            return "Error: --replicas flag is required\n";
+            return "Error: --replicas flag is required\n" + usage;
         }
 
-        if (resource_type != "deployment" && resource_type != "deploy") {
-            return "Error: scaling is only supported for deployments\n";
-        }
-
-        // Find and scale the deployment
         auto& deployments = mod->get_deployments_mutable();
-        bool found = false;
         for (auto& dep : deployments) {
             if (dep.name == resource_name) {
                 dep.replicas = new_replicas;
                 dep.ready_replicas = new_replicas;
                 dep.available_replicas = new_replicas;
-                found = true;
-                break;
+                return "deployment.apps/" + resource_name + " scaled\n";
             }
         }
 
-        if (!found) {
-            return "Error: deployment \"" + resource_name + "\" not found\n";
-        }
-
-        return "deployment.apps/" + resource_name + " scaled\n";
+        return "Error: deployment \"" + resource_name + "\" not found\n";
     };
 }
 
