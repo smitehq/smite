@@ -43,15 +43,18 @@ else
     TARGET := smite.exe
     PLATFORM := windows-amd64
     MSYS2_PATH := C:/msys64/mingw64
-    MSYS2_TOOLS := C:/msys64/usr/bin
     INCLUDE_PATHS := -I. -I src -I$(MSYS2_PATH)/include
     LIB_PATHS := -L$(MSYS2_PATH)/lib
     LIBS := -lyaml-cpp -lfmt -lreadline -lncurses -lstdc++fs
     CXXFLAGS := -g -std=c++20 -finput-charset=UTF-8 -fexec-charset=UTF-8 -DYAML_CPP_STATIC_DEFINE -DNCURSES_STATIC -static $(INCLUDE_PATHS)
     LDFLAGS := $(LIB_PATHS) $(LIBS) -mconsole -static
-    MKDIR := $(MSYS2_TOOLS)/mkdir
-    RM := $(MSYS2_TOOLS)/rm
-    TAR := $(MSYS2_TOOLS)/tar
+    # MSYS make (the `make` package under `msys2 {0}`) spawns a recipe
+    # command itself. A drive-letter path such as C:/msys64/usr/bin/rm is
+    # not resolved to rm.exe, so `make dist` dies in `clean` with Error 127.
+    # /usr/bin is the MSYS2 prefix and does not depend on the parent PATH.
+    MKDIR := /usr/bin/mkdir
+    RM := /usr/bin/rm
+    TAR := /usr/bin/tar
     EXE_SUFFIX := .exe
     WINDRES := windres
     RESOURCE_OBJ := build/resources/smite_res.o
