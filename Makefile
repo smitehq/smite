@@ -220,9 +220,17 @@ show-platform:
 	@echo "Machine: $(UNAME_M)"
 	@echo "Lib paths: $(LIB_PATHS)"
 
+# PLATFORM only. show-platform prints several lines; a reader that exits
+# after the Platform line (the release workflow's awk `exit` under
+# `set -o pipefail`) closes the pipe while later echoes are still running.
+# make then fails with SIGPIPE on macOS or EPIPE on Linux dash, and the
+# job never reaches `make dist`.
+print-platform:
+	@printf '%s\n' '$(PLATFORM)'
+
 # Debug target to show what files are being compiled
 show-sources:
 	@echo "Source files:"
 	@echo $(SRC_SRCS) | tr ' ' '\n'
 
-.PHONY: clean test tests release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run test-k8s-scale test-k8s-quest-commands
+.PHONY: clean test tests release dist show-platform print-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run test-k8s-scale test-k8s-quest-commands
