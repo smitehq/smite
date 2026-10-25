@@ -1,5 +1,14 @@
-# Detect OS
+# Detect OS and CPU. x86_64 keeps the amd64 archive name. Linux reports
+# aarch64 and macOS reports arm64; both package as arm64. The Windows
+# release stays windows-amd64 (MinGW64 x86_64). There is no windows-arm64.
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
+UNAME_M := $(shell uname -m 2>/dev/null || echo unknown)
+
+ifeq ($(filter aarch64 arm64,$(UNAME_M)),)
+    ARCH := amd64
+else
+    ARCH := arm64
+endif
 
 # Compiler
 CXX := clang++
@@ -13,11 +22,15 @@ VER_PATCH := $(word 3,$(subst ., ,$(VERSION)))
 
 # Platform-specific settings
 ifeq ($(findstring Linux,$(UNAME_S)),Linux)
-    # Linux
+    # Linux. Debian/Ubuntu keep shared libraries in the multiarch directory.
     TARGET := smite
-    PLATFORM := linux-amd64
+    PLATFORM := linux-$(ARCH)
     INCLUDE_PATHS := -I. -I src -I/usr/include
-    LIB_PATHS := -L/usr/lib -L/usr/lib/x86_64-linux-gnu
+    ifeq ($(ARCH),arm64)
+        LIB_PATHS := -L/usr/lib -L/usr/lib/aarch64-linux-gnu
+    else
+        LIB_PATHS := -L/usr/lib -L/usr/lib/x86_64-linux-gnu
+    endif
     LIBS := -lyaml-cpp -lfmt -lreadline -lncurses -lstdc++fs
     CXXFLAGS := -g -std=c++20 -DYAML_CPP_STATIC_DEFINE -I. -I src $(INCLUDE_PATHS)
     LDFLAGS := $(LIB_PATHS) $(LIBS)
@@ -26,11 +39,32 @@ ifeq ($(findstring Linux,$(UNAME_S)),Linux)
     TAR := tar
     EXE_SUFFIX :=
 else ifeq ($(findstring Darwin,$(UNAME_S)),Darwin)
-    # macOS
+    # macOS. Apple Silicon Homebrew is /opt/homebrew. Intel Homebrew is
+    # /usr/local. readline and ncurses are keg-only, so headers and libs
+    # live under opt/<formula> and are not linked into the prefix include/lib.
     TARGET := smite
-    PLATFORM := macos-amd64
-    INCLUDE_PATHS := -I. -I src -I/usr/local/include -I/opt/homebrew/include
-    LIB_PATHS := -L/usr/local/lib -L/opt/homebrew/lib
+    PLATFORM := macos-$(ARCH)
+    ifeq ($(ARCH),arm64)
+        BREW_PREFIX := /opt/homebrew
+        BREW_FALLBACK := /usr/local
+    else
+        BREW_PREFIX := /usr/local
+        BREW_FALLBACK := /opt/homebrew
+    endif
+    INCLUDE_PATHS := -I. -I src \
+        -I$(BREW_PREFIX)/include \
+        -I$(BREW_PREFIX)/opt/readline/include \
+        -I$(BREW_PREFIX)/opt/ncurses/include \
+        -I$(BREW_FALLBACK)/include \
+        -I$(BREW_FALLBACK)/opt/readline/include \
+        -I$(BREW_FALLBACK)/opt/ncurses/include
+    LIB_PATHS := \
+        -L$(BREW_PREFIX)/lib \
+        -L$(BREW_PREFIX)/opt/readline/lib \
+        -L$(BREW_PREFIX)/opt/ncurses/lib \
+        -L$(BREW_FALLBACK)/lib \
+        -L$(BREW_FALLBACK)/opt/readline/lib \
+        -L$(BREW_FALLBACK)/opt/ncurses/lib
     LIBS := -lyaml-cpp -lfmt -lreadline -lncurses
     CXXFLAGS := -g -std=c++20 -DYAML_CPP_STATIC_DEFINE -I. -I src $(INCLUDE_PATHS)
     LDFLAGS := $(LIB_PATHS) $(LIBS)
@@ -183,6 +217,8 @@ show-platform:
 	@echo "Target: $(TARGET)"
 	@echo "CXX: $(CXX)"
 	@echo "OS: $(UNAME_S)"
+	@echo "Machine: $(UNAME_M)"
+	@echo "Lib paths: $(LIB_PATHS)"
 
 # Debug target to show what files are being compiled
 show-sources:

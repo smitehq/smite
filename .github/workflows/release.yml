@@ -20,6 +20,8 @@ permissions:
 # A manual run publishes inputs.tag (default 0.2.0) but checks out the
 # commit that started the run. The existing tag can stay on an older
 # commit while the selected branch has the build fix.
+# linux-amd64 creates or edits the GitHub Release. linux-arm64, macos-arm64,
+# and windows-amd64 upload their archives to that same tag.
 env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.tag || '0.2.0') || github.ref_name }}
 
@@ -254,3 +256,187 @@ jobs:
           # rewrite the archive argument.
           archive_win="$(cygpath -w "$archive")"
           gh release upload "$tag" "$archive_win" --clobber
+
+  linux-arm64:
+    name: Linux arm64
+    # The Linux amd64 job creates the GitHub Release. This job only uploads
+    # the arm64 archive. ubuntu-24.04-arm is the arm64 image paired with
+    # ubuntu-24.04, pinned so a later move of ubuntu-latest does not change
+    # this artifact.
+    needs: linux-amd64
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # workflow_dispatch builds github.sha (the selected branch tip).
+          # A tag push builds RELEASE_TAG, the pushed tag.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || env.RELEASE_TAG }}
+
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          # Same packages as the amd64 job. Ubuntu 24.04's clang++ selects
+          # GCC 14 when that toolchain is present. libstdc++-14-dev is the
+          # matching C++ standard library. libncurses-dev provides <ncurses.h>.
+          sudo apt-get install -y --no-install-recommends \
+            make \
+            clang \
+            g++ \
+            libstdc++-14-dev \
+            libyaml-cpp-dev \
+            libfmt-dev \
+            libreadline-dev \
+            libncurses-dev
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          tag="${RELEASE_TAG}"
+          version="${tag#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag '${tag}' is not a release version (expected 0.2.0 or v0.2.0)." >&2
+            exit 1
+          fi
+          makefile_version="$(awk -F ' := ' '/^VERSION := / { gsub(/[[:space:]]/, "", $2); print $2; exit }' Makefile)"
+          globals_version="$(sed -n 's/.*GAME_VERSION = "\([^"]*\)".*/\1/p' src/globals.h | head -n 1)"
+          if [[ "$makefile_version" != "$version" || "$globals_version" != "$version" ]]; then
+            echo "Tag version ${version} does not match Makefile (${makefile_version}) and src/globals.h (${globals_version})." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Resolved ${tag} -> smite-${version}-linux-arm64.tar.gz"
+
+      - name: Build distribution archive
+        run: |
+          set -euo pipefail
+          make show-platform
+          platform="$(make -s show-platform | awk -F': ' '/^Platform:/ { print $2; exit }')"
+          if [[ "$platform" != "linux-arm64" ]]; then
+            echo "This runner must package linux-arm64, but PLATFORM is '${platform}'." >&2
+            exit 1
+          fi
+          make dist VERSION="${{ steps.version.outputs.version }}"
+
+      - name: Check archive layout
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          archive="dist/smite-${version}-linux-arm64.tar.gz"
+          root="smite-${version}-linux-arm64"
+          test -f "$archive"
+          tar -tzf "$archive" | sort > dist/archive-list.txt
+          for path in \
+            "${root}/smite" \
+            "${root}/LICENSE" \
+            "${root}/README.md" \
+            "${root}/src/modules/kubernetes/state/default.yaml" \
+            "${root}/src/modules/kubernetes/quests/k8s_first_steps.yaml"
+          do
+            grep -qx "$path" dist/archive-list.txt
+          done
+          "dist/${root}/smite" --version | grep -F "smite.sh ${version}"
+          ldd "dist/${root}/smite"
+          # Reject an amd64 binary that was given an arm64 archive name.
+          ldd "dist/${root}/smite" | grep -F 'ld-linux-aarch64.so.1'
+
+      - name: Publish Linux arm64 asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          version="${{ steps.version.outputs.version }}"
+          archive="dist/smite-${version}-linux-arm64.tar.gz"
+          gh release upload "$tag" "$archive" --clobber
+
+  macos-arm64:
+    name: macOS arm64
+    # The Linux amd64 job creates the GitHub Release. This job only uploads
+    # the Apple Silicon archive. macos-15 is an arm64 image. Pinned so a
+    # move of macos-latest (macOS 26 as of October 2026) does not change
+    # this artifact. Intel macOS is not published.
+    needs: linux-amd64
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # workflow_dispatch builds github.sha (the selected branch tip).
+          # A tag push builds RELEASE_TAG, the pushed tag.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || env.RELEASE_TAG }}
+
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          # README install: brew install yaml-cpp fmt readline ncurses.
+          # Apple Silicon Homebrew prefix is /opt/homebrew. The Makefile
+          # also searches the keg-only readline and ncurses prefixes.
+          brew --prefix
+          brew install yaml-cpp fmt readline ncurses
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          tag="${RELEASE_TAG}"
+          version="${tag#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag '${tag}' is not a release version (expected 0.2.0 or v0.2.0)." >&2
+            exit 1
+          fi
+          makefile_version="$(awk -F ' := ' '/^VERSION := / { gsub(/[[:space:]]/, "", $2); print $2; exit }' Makefile)"
+          globals_version="$(sed -n 's/.*GAME_VERSION = "\([^"]*\)".*/\1/p' src/globals.h | head -n 1)"
+          if [[ "$makefile_version" != "$version" || "$globals_version" != "$version" ]]; then
+            echo "Tag version ${version} does not match Makefile (${makefile_version}) and src/globals.h (${globals_version})." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Resolved ${tag} -> smite-${version}-macos-arm64.tar.gz"
+
+      - name: Build distribution archive
+        run: |
+          set -euo pipefail
+          make show-platform
+          platform="$(make -s show-platform | awk -F': ' '/^Platform:/ { print $2; exit }')"
+          if [[ "$platform" != "macos-arm64" ]]; then
+            echo "This runner must package macos-arm64, but PLATFORM is '${platform}'." >&2
+            exit 1
+          fi
+          make dist VERSION="${{ steps.version.outputs.version }}"
+
+      - name: Check archive layout
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          archive="dist/smite-${version}-macos-arm64.tar.gz"
+          root="smite-${version}-macos-arm64"
+          test -f "$archive"
+          tar -tzf "$archive" | sort > dist/archive-list.txt
+          for path in \
+            "${root}/smite" \
+            "${root}/LICENSE" \
+            "${root}/README.md" \
+            "${root}/src/modules/kubernetes/state/default.yaml" \
+            "${root}/src/modules/kubernetes/quests/k8s_first_steps.yaml"
+          do
+            grep -qx "$path" dist/archive-list.txt
+          done
+          "dist/${root}/smite" --version | grep -F "smite.sh ${version}"
+          otool -L "dist/${root}/smite"
+          # otool -hv prints ARM64 in the cputype column for Apple Silicon.
+          otool -hv "dist/${root}/smite" | grep -F ARM64
+
+      - name: Publish macOS arm64 asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          version="${{ steps.version.outputs.version }}"
+          archive="dist/smite-${version}-macos-arm64.tar.gz"
+          gh release upload "$tag" "$archive" --clobber
