@@ -58,9 +58,25 @@ A version tag (`0.2.0` or `v0.2.0`) publishes `smite-<version>-linux-amd64.tar.g
 
 The binary links yaml-cpp, fmt, readline, and ncurses dynamically. Install those shared libraries on the machine that runs it.
 
+### Linux arm64 release
+
+The same version tag publishes `smite-<version>-linux-arm64.tar.gz`. The archive layout matches the amd64 build: `smite`, `LICENSE`, `README.md`, and the Kubernetes quest and state YAML under `src/modules/`. Unpack it and run `./smite`. The binary loads `src/modules` from beside itself. Set `SMITE_DATA` to that `src/modules` directory if you relocate the binary.
+
+The binary links yaml-cpp, fmt, readline, and ncurses dynamically. Install those shared libraries on the machine that runs it.
+
+### macOS arm64 release
+
+The same version tag publishes `smite-<version>-macos-arm64.tar.gz` for Apple Silicon. The layout matches the Linux archive. Unpack it and run `./smite`. The binary loads `src/modules` from beside itself. Set `SMITE_DATA` to that `src/modules` directory if you relocate the binary.
+
+The binary links yaml-cpp, fmt, readline, and ncurses dynamically from Homebrew (`/opt/homebrew` on Apple Silicon). Install them on the machine that runs it:
+
+```bash
+brew install yaml-cpp fmt readline ncurses
+```
+
 ### Windows amd64 release
 
-The same version tag publishes `smite-<version>-windows-amd64.tar.gz` next to the Linux archive. The layout matches: `smite.exe`, `LICENSE`, `README.md`, and the Kubernetes quest and state YAML under `src/modules/`. The executable is statically linked, so it does not need the MSYS2 DLLs. Unpack it and run `smite.exe`. It loads `src/modules` from beside itself. Set `SMITE_DATA` to that `src/modules` directory if you relocate the executable.
+The same version tag publishes `smite-<version>-windows-amd64.tar.gz` next to the Linux and macOS archives. The layout matches: `smite.exe`, `LICENSE`, `README.md`, and the Kubernetes quest and state YAML under `src/modules/`. The executable is statically linked, so it does not need the MSYS2 DLLs. Unpack it and run `smite.exe`. It loads `src/modules` from beside itself. Set `SMITE_DATA` to that `src/modules` directory if you relocate the executable.
 
 ### Build from source
 
@@ -180,7 +196,7 @@ make tests      # unit tests
 make clean && make
 ```
 
-`make release` and `make dist` produce a stripped binary and a tarball (`dist/smite-<version>-linux-amd64.tar.gz` on Linux, `dist/smite-<version>-windows-amd64.tar.gz` on Windows). Pushing a version tag runs that `make dist` on Linux and Windows and uploads both archives to the release. Windows builds are statically linked; Linux and macOS link the libraries listed above.
+`make release` and `make dist` produce a stripped binary and a tarball. The archive name follows the host: `dist/smite-<version>-linux-amd64.tar.gz` on x86_64 Linux, `dist/smite-<version>-linux-arm64.tar.gz` on arm64 Linux, `dist/smite-<version>-macos-arm64.tar.gz` on Apple Silicon, and `dist/smite-<version>-windows-amd64.tar.gz` on Windows. An Intel Mac still packages `dist/smite-<version>-macos-amd64.tar.gz`; that archive is not uploaded. Pushing a version tag runs `make dist` on ubuntu-24.04, ubuntu-24.04-arm, macos-15, and windows-2025 and uploads the four published archives to the release. Windows builds are statically linked; Linux and macOS link the libraries listed above.
 
 ---
 
