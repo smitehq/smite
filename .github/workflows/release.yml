@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      # Matches 0.2.0 and v0.2.0. The job rejects tags that are not X.Y.Z.
+      - "*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  linux-amd64:
+    name: Linux amd64
+    # Current ubuntu-latest image. Pinned so the November 2026 move of
+    # ubuntu-latest to 26.04 does not change this artifact.
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          # Ubuntu 24.04's clang++ selects GCC 14 when that toolchain is
+          # present (it is on the hosted image). libstdc++-14-dev is the
+          # matching C++ standard library. libncurses-dev provides <ncurses.h>;
+          # the sources also accept <ncurses/ncurses.h>.
+          sudo apt-get install -y --no-install-recommends \
+            make \
+            clang \
+            g++ \
+            libstdc++-14-dev \
+            libyaml-cpp-dev \
+            libfmt-dev \
+            libreadline-dev \
+            libncurses-dev
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag '${tag}' is not a release version (expected 0.2.0 or v0.2.0)." >&2
+            exit 1
+          fi
+          makefile_version="$(awk -F ' := ' '/^VERSION := / { gsub(/[[:space:]]/, "", $2); print $2; exit }' Makefile)"
+          globals_version="$(sed -n 's/.*GAME_VERSION = "\([^"]*\)".*/\1/p' src/globals.h | head -n 1)"
+          if [[ "$makefile_version" != "$version" || "$globals_version" != "$version" ]]; then
+            echo "Tag version ${version} does not match Makefile (${makefile_version}) and src/globals.h (${globals_version})." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Resolved ${tag} -> smite-${version}-linux-amd64.tar.gz"
+
+      - name: Build distribution archive
+        run: make dist VERSION="${{ steps.version.outputs.version }}"
+
+      - name: Check archive layout
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          archive="dist/smite-${version}-linux-amd64.tar.gz"
+          root="smite-${version}-linux-amd64"
+          test -f "$archive"
+          tar -tzf "$archive" | sort > dist/archive-list.txt
+          for path in \
+            "${root}/smite" \
+            "${root}/LICENSE" \
+            "${root}/README.md" \
+            "${root}/src/modules/kubernetes/state/default.yaml" \
+            "${root}/src/modules/kubernetes/quests/k8s_first_steps.yaml"
+          do
+            grep -qx "$path" dist/archive-list.txt
+          done
+          "dist/${root}/smite" --version | grep -F "smite.sh ${version}"
+          ldd "dist/${root}/smite"
+
+      - name: Release notes from CHANGELOG
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          notes="$(awk -v ver="$version" '
+            function matches(heading, version,    rest) {
+              if (heading == version) return 1
+              if (index(heading, version) != 1) return 0
+              rest = substr(heading, length(version) + 1)
+              return rest == "" || rest ~ /^[[:space:]]/
+            }
+            /^## / {
+              if (capture) exit
+              heading = $0
+              sub(/^##[[:space:]]+/, "", heading)
+              gsub(/\r/, "", heading)
+              if (matches(heading, ver)) capture = 1
+              next
+            }
+            capture { print }
+          ' CHANGELOG.md)"
+          if [[ -z "${notes//[[:space:]]/}" ]]; then
+            echo "No CHANGELOG.md section for ${version}; using a short fallback." >&2
+            notes="Release ${version}."
+          else
+            notes="$(printf '%s\n' "$notes" | sed '/./,$!d')"
+          fi
+          {
+            printf '## %s\n\n' "$version"
+            printf '%s\n' "$notes"
+          } > dist/release-notes.md
+          cat dist/release-notes.md
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          version="${{ steps.version.outputs.version }}"
+          archive="dist/smite-${version}-linux-amd64.tar.gz"
+          title="smite ${version}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$archive" --clobber
+            gh release edit "$tag" --title "$title" --notes-file dist/release-notes.md
+          else
+            gh release create "$tag" "$archive" --title "$title" --notes-file dist/release-notes.md
+          fi
