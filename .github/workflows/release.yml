@@ -16,8 +16,10 @@ on:
 permissions:
   contents: write
 
-# Tag pushes publish the pushed tag. A manual run publishes inputs.tag,
-# which defaults to 0.2.0 so the existing annotated tag can be built.
+# Tag pushes publish the pushed tag and check that tag out.
+# A manual run publishes inputs.tag (default 0.2.0) but checks out the
+# commit that started the run. The existing tag can stay on an older
+# commit while the selected branch has the build fix.
 env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.tag || '0.2.0') || github.ref_name }}
 
@@ -31,7 +33,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          # workflow_dispatch builds github.sha (the selected branch tip).
+          # A tag push builds RELEASE_TAG, the pushed tag.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || env.RELEASE_TAG }}
 
       - name: Install build dependencies
         run: |
@@ -154,7 +158,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          # workflow_dispatch builds github.sha (the selected branch tip).
+          # A tag push builds RELEASE_TAG, the pushed tag.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || env.RELEASE_TAG }}
 
       - name: Install MSYS2 MinGW64 toolchain
         uses: msys2/setup-msys2@v2
