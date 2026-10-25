@@ -1,6 +1,7 @@
 #include "globals.h"
 #include "utils.h"
 #include "engine.h"
+#include "paths.h"
 #include "shell/shell.h"
 #include <filesystem>
 #include <iostream>
@@ -124,43 +125,7 @@ Engine::Engine(const std::string& modulesDir)
 
             std::string mod = selected.substr(0, colon_pos);
             std::string quest_id = selected.substr(colon_pos + 1);
-
-            // Activate the quest
-            const Quest* quest = quests_.get_quest(mod, quest_id);
-            if (!quest) {
-                return "Quest not found.\n";
-            }
-
-            if (!quests_.activate_quest(mod, quest_id)) {
-                return "Failed to activate quest.\n";
-            }
-
-            auto mod_ptr = router_.get_module_by_name(mod);
-            if (!mod_ptr) {
-                return fmt::format("Module not found: {}\n", mod);
-            }
-            mod_ptr->activate_quest(quest_id);
-
-            // Start telemetry tracking for this quest
-            telemetry_.start_quest_tracking(mod, quest_id);
-
-            // Display epic quest activation message
-            std::string output = "\n";
-            output += "========================================================================\n";
-            output += "                   ** QUEST ACTIVATED **                               \n";
-            output += "========================================================================\n";
-            output += "\n";
-            output += fmt::format("  >> {}\n", fmt::styled(quest->title, globals::style::header));
-            output += "  ----------------------------------------------------------------------\n";
-            output += "\n";
-
-            if (!quest->intro_text.empty()) {
-                output += quest->intro_text + "\n\n";
-            }
-
-            output += "  Use 'hint' if you need guidance.\n\n";
-
-            return output;
+            return activate_named_quest(mod, quest_id);
         }
 
         const auto& mod = args[1];
@@ -168,54 +133,74 @@ Engine::Engine(const std::string& modulesDir)
             return quests_.list_quests(mod);
         }
         
-        const auto& quest_id = args[2];
-
-        // Get quest details for intro text
-        const Quest* quest = quests_.get_quest(mod, quest_id);
-        if (!quest) {
-            return "Quest not found.\n";
-        }
-
-        // Activate in QuestManager
-        if (!quests_.activate_quest(mod, quest_id)) {
-            return "Failed to activate quest.\n";
-        }
-
-        // Activate in module
-        auto mod_ptr = router_.get_module_by_name(mod);
-        if (!mod_ptr) {
-            return fmt::format("Module not found: {}\n", mod);
-        }
-        mod_ptr->activate_quest(quest_id);
-
-        // Start telemetry tracking for this quest
-        telemetry_.start_quest_tracking(mod, quest_id);
-
-        // Display epic quest activation message
-        std::string output = "\n";
-        output += "========================================================================\n";
-        output += "                   ** QUEST ACTIVATED **                               \n";
-        output += "========================================================================\n";
-        output += "\n";
-        output += fmt::format("  >> {}\n", fmt::styled(quest->title, globals::style::header));
-        output += "  ----------------------------------------------------------------------\n";
-        output += "\n";
-
-        // Display intro text if available
-        if (!quest->intro_text.empty()) {
-            output += quest->intro_text + "\n\n";
-        } else {
-            output += "  " + quest->description + "\n\n";
-        }
-
-        output += "  ----------------------------------------------------------------------\n";
-        output += fmt::format("  Reward: {}\n", fmt::styled("+" + std::to_string(quest->reward_xp) + " XP", globals::style::success));
-        output += "\n";
-        output += fmt::format("  {}\n", fmt::styled("May your debugging skills be sharp and your logs be clear.", globals::style::info));
-        output += "\n";
-
-        return output;
+        return activate_named_quest(mod, args[2]);
     });
+}
+
+std::string format_quest_activated(const Quest& quest) {
+    std::string output = "\n";
+    output += "========================================================================\n";
+    output += "                   ** QUEST ACTIVATED **\n";
+    output += "========================================================================\n";
+    output += "\n";
+    output += fmt::format("  >> {}\n", fmt::styled(quest.title, globals::style::header));
+    output += "  ----------------------------------------------------------------------\n";
+    output += "\n";
+
+    if (!quest.intro_text.empty()) {
+        output += quest.intro_text + "\n";
+    } else {
+        output += "  " + quest.description + "\n\n";
+    }
+
+    output += "  ----------------------------------------------------------------------\n";
+    output += fmt::format("  Reward: {}\n", fmt::styled("+" + std::to_string(quest.reward_xp) + " XP", globals::style::success));
+    output += "\n";
+    output += "  Use 'hint' if you need guidance.\n";
+    output += "\n";
+    return output;
+}
+
+std::string Engine::activate_named_quest(const std::string& mod, const std::string& quest_id) {
+    const Quest* quest = quests_.get_quest(mod, quest_id);
+    if (!quest) {
+        return "Quest not found.\n";
+    }
+    if (!quest->available) {
+        return "That quest is not available yet. Its hints need kubectl commands smite does not implement.\n";
+    }
+    if (!quests_.is_quest_unlocked(mod, quest_id)) {
+        return "That quest is locked.\n";
+    }
+    if (!quests_.activate_quest(mod, quest_id)) {
+        return "Failed to activate quest.\n";
+    }
+
+    auto mod_ptr = router_.get_module_by_name(mod);
+    if (!mod_ptr) {
+        return fmt::format("Module not found: {}\n", mod);
+    }
+    mod_ptr->activate_quest(quest_id);
+    telemetry_.start_quest_tracking(mod, quest_id);
+    return format_quest_activated(*quest);
+}
+
+std::string Engine::begin_first_quest_if_needed() {
+    if (first_quest_started_ || quests_.has_persisted_state()) {
+        return "";
+    }
+    if (!router_.get_module_by_name("kubernetes")) {
+        return "";
+    }
+
+    std::string banner = activate_named_quest("kubernetes", "k8s_first_steps");
+    if (!quests_.is_active("kubernetes", "k8s_first_steps")) {
+        return banner;
+    }
+
+    first_quest_started_ = true;
+    quests_.save_state();
+    return banner;
 }
 
 // --------------------------
@@ -312,6 +297,11 @@ std::string Engine::dispatch_command(const std::string& cmd) {
 
             quests_.mark_quest_completed(mod_name, quest_id);
             mod->clear_quest_completion_flag();
+            result += "\n";
+            result += quests_.format_next_step(mod_name, quest_id);
+            if (!settings_.has_telemetry_preference()) {
+                pending_telemetry_prompt_ = true;
+            }
         }
     }
 
@@ -335,9 +325,7 @@ std::shared_ptr<Shell> Engine::get_shell_module() {
 // Helper: Get History File Path
 // --------------------------
 std::string get_history_file_path() {
-    auto settings_path = SettingsManager::get_settings_path();
-    auto smite_dir = settings_path.parent_path();
-    return (smite_dir / ".history").string();
+    return (smite::paths::user_state_dir() / ".history").string();
 }
 
 // --------------------------
@@ -379,17 +367,28 @@ void Engine::prompt_telemetry_consent() {
     std::cout << "\n";
 }
 
+void Engine::flush_telemetry_prompt() {
+    if (!pending_telemetry_prompt_) return;
+    pending_telemetry_prompt_ = false;
+    if (!settings_.has_telemetry_preference()) {
+        prompt_telemetry_consent();
+    }
+}
+
 // --------------------------
 // REPL
 // --------------------------
 void Engine::repl() {
     // Load previous history from ~/.smite/.history
     std::string history_file = get_history_file_path();
+    fs::create_directories(smite::paths::user_state_dir());
     read_history(history_file.c_str());
 
-    // Prompt for telemetry consent on first run
-    if (!settings_.has_telemetry_preference()) {
-        prompt_telemetry_consent();
+    // First launch starts the guided path. Telemetry is asked only after a quest
+    // is completed, so a new player is not stopped before they have played.
+    std::string intro = begin_first_quest_if_needed();
+    if (!intro.empty()) {
+        std::cout << intro;
     }
 
     // Setup for auto-completion
@@ -439,6 +438,7 @@ void Engine::repl() {
                     std::cout << " (Chain stopped on error)\n";
                 }
                 std::cout << std::endl;
+                flush_telemetry_prompt();
                 continue;
             }
         }
@@ -449,6 +449,7 @@ void Engine::repl() {
             std::cout << output;
         }
         std::cout << std::endl;
+        flush_telemetry_prompt();
     }
 
     // Save history to ~/.smite/.history (reuse variable from earlier)

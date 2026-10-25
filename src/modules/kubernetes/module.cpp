@@ -31,6 +31,7 @@
 #include "commands/cordon.h"
 #include "commands/create_configmap.h"
 #include "commands/edit_service.h"
+#include "commands/describe_deployment.h"
 
 namespace fs = std::filesystem;
 
@@ -349,7 +350,10 @@ void KubernetesModule::register_builtin_commands() {
     // Template register_command automatically passes 'this' to command factories
     register_command("kubectl version", cmd_version);
     register_command("kubectl get pods", cmd_get_pods);
+    register_command("kubectl get pod", cmd_get_pods);   // alias
+    register_command("kubectl get po", cmd_get_pods);    // alias
     register_command("kubectl get deployments", cmd_get_deployments);
+    register_command("kubectl get deployment", cmd_get_deployments);  // alias
     register_command("kubectl get deploy", cmd_get_deployments);  // alias
     register_command("kubectl get services", cmd_get_services);
     register_command("kubectl get svc", cmd_get_services);  // alias
@@ -357,15 +361,23 @@ void KubernetesModule::register_builtin_commands() {
     register_command("kubectl get cm", cmd_get_configmaps);  // alias
     register_command("kubectl logs", cmd_logs);
     register_command("kubectl describe pod", cmd_describe_pod);
+    register_command("kubectl describe pods", cmd_describe_pod);  // alias
+    register_command("kubectl describe po", cmd_describe_pod);    // alias
+    register_command("kubectl describe deployment", cmd_describe_deployment);
+    register_command("kubectl describe deploy", cmd_describe_deployment);  // alias
     register_command("kubectl delete pod", cmd_delete_pod);
+    register_command("kubectl delete po", cmd_delete_pod);  // alias
     register_command("kubectl get secrets", cmd_get_secrets);
     register_command("kubectl create secret generic", cmd_create_secret_generic);
     register_command("kubectl get nodes", cmd_get_nodes);
+    register_command("kubectl get no", cmd_get_nodes);  // alias
     register_command("kubectl describe node", cmd_describe_node);
+    register_command("kubectl describe no", cmd_describe_node);  // alias
     register_command("kubectl top nodes", cmd_top_nodes);
     register_command("kubectl top pods", cmd_top_pods);
     register_command("kubectl get events", cmd_get_events);
     register_command("kubectl edit deployment", cmd_edit_deployment);
+    register_command("kubectl edit deploy", cmd_edit_deployment);  // alias
     register_command("kubectl scale deployment", cmd_scale);
     register_command("kubectl scale deploy", cmd_scale);  // alias
     register_command("kubectl rollout", cmd_rollout);
@@ -373,6 +385,25 @@ void KubernetesModule::register_builtin_commands() {
     register_command("kubectl uncordon", cmd_uncordon);
     register_command("kubectl create configmap", cmd_create_configmap);
     register_command("kubectl edit service", cmd_edit_service);
+
+    // Catch kubectl invocations that do not match a longer registered prefix.
+    // This must stay a bare "kubectl" prefix so longest-prefix matching still
+    // prefers real commands, and so hint tests do not treat it as implementing
+    // every subcommand.
+    register_command("kubectl", [](KubernetesModule*) {
+        return [](const std::vector<std::string>& args) -> std::string {
+            std::string invocation = "kubectl";
+            for (const auto& arg : args) {
+                invocation += " ";
+                invocation += arg;
+            }
+            if (args.empty()) {
+                return "smite: kubectl needs a subcommand. Try 'kubectl get pods' or 'help'.\n";
+            }
+            return "smite: '" + invocation + "' is not implemented yet.\n"
+                   "Run 'help' for commands this simulator actually supports.\n";
+        };
+    });
 }
 
 auto KubernetesModule::find_pod(const std::string& pod_name) -> decltype(pods.begin()) {

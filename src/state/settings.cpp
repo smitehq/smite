@@ -1,15 +1,8 @@
 #include "settings.h"
+#include "core/paths.h"
 #include <yaml-cpp/yaml.h>
 #include <fstream>
 #include <iostream>
-
-#ifdef _WIN32
-#include <windows.h>
-#include <shlobj.h>
-#else
-#include <unistd.h>
-#include <pwd.h>
-#endif
 
 namespace fs = std::filesystem;
 
@@ -18,9 +11,8 @@ SettingsManager::SettingsManager() {
 }
 
 std::filesystem::path SettingsManager::get_settings_path() {
-    // Use .smite directory relative to current working directory (where executable runs)
-    fs::path smite_dir = fs::current_path() / ".smite";
-    return smite_dir / "settings.yaml";
+    // All player state lives in ~/.smite, not the working directory.
+    return smite::paths::user_state_dir() / "settings.yaml";
 }
 
 void SettingsManager::ensure_settings_dir() {
@@ -42,7 +34,7 @@ void SettingsManager::load() {
     if (!fs::exists(settings_path)) {
         // No settings file exists yet - user hasn't made a choice
         has_preference_ = false;
-        telemetry_enabled_ = true;  // Default to enabled
+        telemetry_enabled_ = false;  // Default off until the player opts in
         return;
     }
 
@@ -58,7 +50,7 @@ void SettingsManager::load() {
     } catch (const std::exception& e) {
         std::cerr << "Warning: Could not load settings: " << e.what() << std::endl;
         has_preference_ = false;
-        telemetry_enabled_ = true;
+        telemetry_enabled_ = false;
     }
 }
 

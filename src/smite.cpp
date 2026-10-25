@@ -1,7 +1,9 @@
 #include "globals.h"
 #include "core/engine.h"
+#include "core/paths.h"
 #include "core/router.h"
 #include "shell/shell.h"
+#include <filesystem>
 #include <memory>
 #include <iostream>
 
@@ -28,28 +30,34 @@ int main(int argc, char** argv) {
     fmt::print(globals::style::header, "{} Welcome, Apprentice. Your journey begins.\n", globals::style::smite);
     std::cout << "smite.sh engine - type 'help' for commands, 'quit' to exit\n" << std::endl;
 
-    // create router & engine and register modules
-    Engine engine("./src/modules"); // modules folder path (ignored for static proto)
-    // engine.load_modules(); // would load dynamic modules from folder
+    // Quest YAML and cluster state ship next to the binary (SMITE_DATA overrides).
+    const std::filesystem::path modules_dir = smite::paths::modules_data_dir();
+    if (!std::filesystem::is_directory(modules_dir / "kubernetes")) {
+        std::cerr << "Could not find smite data directory at " << modules_dir << "\n";
+        std::cerr << "Set SMITE_DATA to the modules directory (the folder that contains kubernetes/).\n";
+        return 1;
+    }
+
+    Engine engine(modules_dir.string());
 
     auto shell = create_module_shell();  // Always first
-    if (!shell->load_from_path("./src/shell")) {
+    const auto shell_dir = modules_dir.parent_path() / "shell";
+    if (!shell->load_from_path(shell_dir.string())) {
         std::cerr << "Failed to load shell module\n";
         return 1;
     }
     engine.add_module(shell);
 
     auto linux = create_module_linux();
-    if (!linux->load_from_path("./src/modules/linux")) {
+    if (!linux->load_from_path((modules_dir / "linux").string())) {
         std::cerr << "Failed to load linux module\n";
         return 1;
     }
     engine.add_module(linux);
 
-    // instantiate kube module and load its path
     auto kube = create_module_kubernetes();
-    if (!kube->load_from_path("./src/modules/kubernetes")) {
-        std::cerr << "Failed to load kubernetes module\n";
+    if (!kube->load_from_path((modules_dir / "kubernetes").string())) {
+        std::cerr << "Failed to load kubernetes module from " << (modules_dir / "kubernetes") << "\n";
         return 1;
     }
     engine.add_module(kube);

@@ -24,6 +24,7 @@ struct Quest {
     int reward_xp;
     QuestDifficulty difficulty = QuestDifficulty::BEGINNER;
     std::vector<std::string> unlock_quests;  // Quests unlocked on completion
+    bool available = true;  // False when hints require kubectl commands smite does not implement
 };
 
 class QuestManager {
@@ -62,6 +63,12 @@ public:
     std::string list_quests(const std::string& mod_name) const;
     std::string list_all_quests_grouped() const;  // List all quests grouped by module and difficulty
 
+    // Line printed after a quest is completed. Always starts with "Next: ".
+    std::string format_next_step(const std::string& mod_name, const std::string& quest_id) const;
+
+    // True when ~/.smite/quest_state.yaml existed at load time (not a first launch).
+    bool has_persisted_state() const { return had_persisted_state_; }
+
 private:
     std::string modules_dir;
     std::map<std::string, std::vector<Quest>> quests_by_module;
@@ -69,4 +76,5 @@ private:
     std::map<std::string, int> hints_shown_per_module; // module -> number of hints shown
     std::map<std::string, std::set<std::string>> unlocked_quests_per_module; // module -> set of unlocked quest IDs
     std::map<std::string, std::set<std::string>> completed_quests_per_module; // module -> set of completed quest IDs
+    bool had_persisted_state_ = false;
 };

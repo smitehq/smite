@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cassert>
 #include <filesystem>
+#include <cstdlib>
+#include <unistd.h>
 
 namespace fs = std::filesystem;
 
@@ -27,8 +29,12 @@ int tests_failed = 0;
     }
 
 int main() {
+    fs::path home = fs::temp_directory_path() / ("smite-settings-test-" + std::to_string(getpid()));
+    fs::remove_all(home);
+    fs::create_directories(home);
+    setenv("HOME", home.c_str(), 1);
 
-TEST("Settings file path contains .smite directory")
+TEST("Settings file path is ~/.smite/settings.yaml")
     fs::path settings_path = SettingsManager::get_settings_path();
     std::string path_str = settings_path.string();
 
@@ -36,9 +42,11 @@ TEST("Settings file path contains .smite directory")
            "Settings path should contain .smite directory");
     ASSERT(path_str.find("settings.yaml") != std::string::npos,
            "Settings path should end with settings.yaml");
+    ASSERT(settings_path == home / ".smite" / "settings.yaml",
+           "Settings, like other player state, live in ~/.smite");
 END_TEST()
 
-TEST("New SettingsManager defaults to enabled with no preference")
+TEST("New SettingsManager defaults to disabled with no preference")
     // Delete settings file if it exists
     fs::path settings_path = SettingsManager::get_settings_path();
     if (fs::exists(settings_path)) {
@@ -46,8 +54,8 @@ TEST("New SettingsManager defaults to enabled with no preference")
     }
 
     SettingsManager settings;
-    ASSERT(settings.is_telemetry_enabled() == true,
-           "Default telemetry should be enabled");
+    ASSERT(settings.is_telemetry_enabled() == false,
+           "Default telemetry should be off until the player opts in");
     ASSERT(settings.has_telemetry_preference() == false,
            "Should not have preference on first run");
 END_TEST()

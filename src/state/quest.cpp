@@ -1,6 +1,8 @@
 #include "quest.h"
 #include "telemetry.h"
 #include "core/module_interface.h"
+#include "core/paths.h"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -51,21 +53,39 @@ void QuestManager::load_all_quests() {
 
             q.condition = qyaml["condition"];
             q.reward_xp = qyaml["reward_xp"].as<int>(0);
+            if (qyaml["available"]) {
+                q.available = qyaml["available"].as<bool>();
+            }
             quests.push_back(std::move(q));
         }
+
+        std::sort(quests.begin(), quests.end(), [](const Quest& a, const Quest& b) {
+            if (a.difficulty != b.difficulty) {
+                return static_cast<int>(a.difficulty) < static_cast<int>(b.difficulty);
+            }
+            if (a.title != b.title) return a.title < b.title;
+            return a.id < b.id;
+        });
+
         quests_by_module[mod_name] = std::move(quests);
 
         // Initialize starter quests as unlocked for each module
-        // Unlock all beginner and intermediate quests as starting points
+        // Unlock all beginner and intermediate quests as starting points.
+        // Unavailable quests stay hidden until their commands exist.
         for (const auto& q : quests_by_module[mod_name]) {
+            if (!q.available) continue;
             if (q.difficulty == QuestDifficulty::BEGINNER ||
                 q.difficulty == QuestDifficulty::INTERMEDIATE) {
                 unlocked_quests_per_module[mod_name].insert(q.id);
             }
         }
-        // If no beginner/intermediate quests, unlock the first quest
-        if (unlocked_quests_per_module[mod_name].empty() && !quests_by_module[mod_name].empty()) {
-            unlocked_quests_per_module[mod_name].insert(quests_by_module[mod_name][0].id);
+        // If no beginner/intermediate quests, unlock the first playable quest
+        if (unlocked_quests_per_module[mod_name].empty()) {
+            for (const auto& q : quests_by_module[mod_name]) {
+                if (!q.available) continue;
+                unlocked_quests_per_module[mod_name].insert(q.id);
+                break;
+            }
         }
     }
 }
@@ -88,6 +108,11 @@ const Quest* QuestManager::get_quest(const std::string& mod, const std::string& 
 
 bool QuestManager::activate_quest(const std::string& mod, const std::string& quest_id) {
     if (!quests_by_module.count(mod)) return false;
+
+    const Quest* requested = get_quest(mod, quest_id);
+    if (requested && !requested->available) {
+        return false;
+    }
 
     // Check if quest is unlocked
     if (!is_quest_unlocked(mod, quest_id)) {
@@ -115,6 +140,8 @@ std::string QuestManager::list_quests(const std::string& mod_name) const {
     if (it == quests_by_module.end()) return "No quests found.\n";
 
     for (const auto& q : it->second) {
+        // Hide quests whose hints need commands that are not implemented.
+        if (!q.available) continue;
         // Only show unlocked quests
         if (!is_quest_unlocked(mod_name, q.id)) continue;
 
@@ -242,6 +269,7 @@ std::string QuestManager::list_all_quests_grouped() const {
         // Count quests by difficulty
         std::map<QuestDifficulty, std::vector<const Quest*>> by_diff;
         for (const auto& q : quests) {
+            if (!q.available) continue;
             by_diff[q.difficulty].push_back(&q);
         }
         
@@ -254,7 +282,7 @@ std::string QuestManager::list_all_quests_grouped() const {
                           QuestDifficulty::ADVANCED, QuestDifficulty::EXPERT}) {
             if (by_diff.count(diff) == 0 || by_diff[diff].empty()) continue;
             
-            oss << "    " << diff_to_str(diff) << ":\n";
+            std::ostringstream section;
             for (const auto* q : by_diff[diff]) {
                 // Only show unlocked quests
                 if (!is_quest_unlocked(mod_name, q->id)) continue;
@@ -265,9 +293,11 @@ std::string QuestManager::list_all_quests_grouped() const {
                 } else if (is_quest_completed(mod_name, q->id)) {
                     status = " [COMPLETED]";
                 }
-                oss << "      - " << q->id << ": " << q->title << " [" << q->reward_xp << " XP]" << status << "\n";
+                section << "      - " << q->id << ": " << q->title << " [" << q->reward_xp << " XP]" << status << "\n";
             }
-            oss << "\n";
+            if (section.str().empty()) continue;
+            oss << "    " << diff_to_str(diff) << ":\n";
+            oss << section.str() << "\n";
         }
         
         oss << "\n";
@@ -276,6 +306,25 @@ std::string QuestManager::list_all_quests_grouped() const {
     oss << "Use 'quest activate <module> <quest_id>' to start a quest\n";
     oss << "Use 'hint' during a quest to get guidance\n\n";
 
+    return oss.str();
+}
+
+std::string QuestManager::format_next_step(const std::string& mod_name, const std::string& quest_id) const {
+    const Quest* quest = get_quest(mod_name, quest_id);
+    std::ostringstream oss;
+    bool any = false;
+    if (quest) {
+        for (const auto& next_id : quest->unlock_quests) {
+            const Quest* next = get_quest(mod_name, next_id);
+            if (!next || !next->available) continue;
+            any = true;
+            oss << "Next: " << next->title
+                << " (quests " << mod_name << " " << next->id << ")\n";
+        }
+    }
+    if (!any) {
+        oss << "Next: browse more quests with 'quests'\n";
+    }
     return oss.str();
 }
 
@@ -435,24 +484,21 @@ void QuestManager::save_state() {
 
     out << YAML::EndMap;
 
-    // Write to file in home directory
-    std::string home = std::getenv("HOME") ? std::getenv("HOME") : ".";
-    std::string smite_dir = home + "/.smite";
-    fs::create_directories(smite_dir);
+    fs::path state_file = smite::paths::user_state_dir() / "quest_state.yaml";
+    fs::create_directories(state_file.parent_path());
 
-    std::string state_file = smite_dir + "/quest_state.yaml";
     std::ofstream file(state_file);
     file << out.c_str();
 }
 
 void QuestManager::load_state() {
-    std::string home = std::getenv("HOME") ? std::getenv("HOME") : ".";
-    std::string state_file = home + "/.smite/quest_state.yaml";
+    fs::path state_file = smite::paths::user_state_dir() / "quest_state.yaml";
+    had_persisted_state_ = fs::exists(state_file);
 
-    if (!fs::exists(state_file)) return;
+    if (!had_persisted_state_) return;
 
     try {
-        YAML::Node state = YAML::LoadFile(state_file);
+        YAML::Node state = YAML::LoadFile(state_file.string());
 
         // Load unlocked quests
         if (state["unlocked_quests"]) {

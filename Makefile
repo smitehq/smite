@@ -5,7 +5,7 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 CXX := clang++
 
 # Version
-VERSION := 0.1.0
+VERSION := 0.2.0
 
 # Platform-specific settings
 ifeq ($(findstring Linux,$(UNAME_S)),Linux)
@@ -89,7 +89,7 @@ clean:
 	$(RM) -rf build dist $(TARGET)
 
 # Run all tests
-tests: test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings
+tests: test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run
 
 # K8s Quest Test
 test-k8s-quest: build/tests/test_k8s_quest.o $(SRC_OBJS)
@@ -126,6 +126,11 @@ test-settings: build/tests/test_settings.o $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) build/tests/test_settings.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_settings$(EXE_SUFFIX) $(LDFLAGS)
 	./build/tests/test_settings$(EXE_SUFFIX)
 
+# First-run UX: data paths, guided quests, kubectl aliases, hint commands
+test-first-run: build/tests/test_first_run.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_first_run.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_first_run$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_first_run$(EXE_SUFFIX)
+
 build/tests/%.o: tests/%.cpp
 	@$(MKDIR) -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -159,4 +164,4 @@ show-sources:
 	@echo "Source files:"
 	@echo $(SRC_SRCS) | tr ' ' '\n'
 
-.PHONY: clean test release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings
+.PHONY: clean test tests release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run

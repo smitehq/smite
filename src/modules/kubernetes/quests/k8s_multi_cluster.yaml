@@ -1,5 +1,6 @@
 id: k8s_multi_cluster
 title: "The Desynchronized Replicas"
+available: false
 description: "Fix a deployment that's scaled differently across DR clusters."
 difficulty: expert
 
