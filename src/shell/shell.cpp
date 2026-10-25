@@ -106,6 +106,58 @@ std::string Shell::resolve_path(const std::string& path_arg) const {
     return current_dir_ + "/" + path;
 }
 
+std::optional<std::string> Shell::normalize_path(const std::string& path_arg) const {
+    std::string path = path_arg.empty() ? current_dir_ : expand_home(path_arg);
+    if (path.empty()) path = current_dir_;
+
+    const bool absolute = path[0] == '/';
+    std::vector<std::string> parts;
+
+    auto consume = [&](const std::string& token) -> bool {
+        if (token.empty() || token == ".") return true;
+        if (token == "..") {
+            if (!parts.empty()) parts.pop_back();
+            return true;
+        }
+
+        Dir* current = root_.get();
+        for (const auto& part : parts) {
+            auto it = current->subdirs.find(part);
+            if (it == current->subdirs.end()) return false;
+            current = it->second.get();
+        }
+        if (current->subdirs.find(token) == current->subdirs.end()) return false;
+
+        parts.push_back(token);
+        return true;
+    };
+
+    auto consume_all = [&](const std::string& raw) -> bool {
+        std::string token;
+        for (size_t i = 0; i <= raw.size(); ++i) {
+            if (i == raw.size() || raw[i] == '/') {
+                if (!consume(token)) return false;
+                token.clear();
+            } else {
+                token.push_back(raw[i]);
+            }
+        }
+        return true;
+    };
+
+    if (!absolute && !consume_all(current_dir_)) return std::nullopt;
+    if (!consume_all(path)) return std::nullopt;
+
+    if (parts.empty()) return std::string("/");
+
+    std::string out;
+    for (const auto& part : parts) {
+        out += "/";
+        out += part;
+    }
+    return out;
+}
+
 pair<Dir*, string> Shell::get_dir_and_file(const std::string& full_path) const {
     string path = full_path;
     if (path.empty() || path == "/") return {root_.get(), ""};

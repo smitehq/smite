@@ -28,6 +28,9 @@ public:
 
     // Filesystem helpers
     std::string resolve_path(const std::string& path_arg) const;
+    // Absolute form of path_arg with '.', '..', and empty segments collapsed.
+    // nullopt when a real path component does not exist. '..' above '/' stays at '/'.
+    std::optional<std::string> normalize_path(const std::string& path_arg) const;
     std::pair<Dir*, std::string> get_dir_and_file(const std::string& full_path) const;
     std::optional<Dir*> get_dir_safe(const std::string& path_arg) const;
     Dir* get_dir(const std::string& path_arg) const;

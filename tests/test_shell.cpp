@@ -291,37 +291,39 @@ int main() {
     // Path Traversal & Filesystem Stress Tests
     // ========================================
 
-    TEST("cd ../../../.. - relative parent paths not yet supported")
+    TEST("cd ../../../.. climbs to root and stays there")
         shell->run_command("cd", {"/tmp"});
         std::string output = shell->run_command("cd", {"../../../.."});
         std::cout << "cd ../../../.. output: '" << output << "'";
-        // Current behavior: relative paths with .. are not supported
-        ASSERT_STR_CONTAINS(output, "No such directory");
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/\n");
     END_TEST()
 
-    TEST("cd /../../../.. - absolute paths with .. not yet normalized")
+    TEST("cd /../../../.. normalizes to root")
         std::string output = shell->run_command("cd", {"/../../../.."});
         std::cout << "cd /../../../.. output: '" << output << "'";
-        // Current behavior: .. in paths not normalized
-        ASSERT_STR_CONTAINS(output, "No such directory");
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/\n");
     END_TEST()
 
-    TEST("cd with dots in middle of path - not yet normalized")
+    TEST("cd resolves .. mixed with real directories")
         shell->run_command("cd", {"/"});
         std::string output = shell->run_command("cd", {"/tmp/../etc"});
         std::cout << "cd /tmp/../etc output: '" << output << "'";
-        // Current behavior: .. not resolved
-        ASSERT_STR_CONTAINS(output, "No such directory");
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/etc\n");
+
+        shell->run_command("cd", {"/etc"});
+        output = shell->run_command("cd", {"../tmp"});
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/tmp\n");
     END_TEST()
 
-    TEST("cd /./tmp/./. handles single dots")
+    TEST("cd /./tmp/./. normalizes single dots")
         std::string output = shell->run_command("cd", {"/./tmp/./."});
         std::cout << "cd /./tmp/./. output: '" << output << "'";
-
-        std::string pwd_output = shell->run_command("pwd", {});
-        std::cout << "pwd output: " << pwd_output;
-        // Current behavior: . not normalized but path still works
-        ASSERT_STR_CONTAINS(pwd_output, "tmp");
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/tmp\n");
     END_TEST()
 
     TEST("ls ../etc from /tmp - relative paths not supported")
@@ -355,15 +357,12 @@ int main() {
         ASSERT_STR_CONTAINS(output, "No such file");
     END_TEST()
 
-    TEST("cd to path with trailing slashes")
+    TEST("cd to path with trailing slashes normalizes")
         shell->run_command("cd", {"/"});
         std::string output = shell->run_command("cd", {"/tmp///"});
         std::cout << "cd /tmp/// output: '" << output << "'";
-
-        std::string pwd_output = shell->run_command("pwd", {});
-        std::cout << "pwd output: " << pwd_output;
-        // Current behavior: trailing slashes preserved
-        ASSERT_STR_CONTAINS(pwd_output, "tmp");
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/tmp\n");
     END_TEST()
 
     TEST("touch file in /etc fails (read-only)")
@@ -377,15 +376,55 @@ int main() {
         // Some implementations might allow it in virtual FS
     END_TEST()
 
-    TEST("cd ~/../.. tries to escape via home")
+    TEST("cd ../.. from home climbs to root")
         shell->run_command("cd", {"~"});
+        ASSERT_EQ(shell->get_current_dir(), std::string("/home/") + globals::PLAYER_NAME);
         std::string output = shell->run_command("cd", {"../.."});
         std::cout << "cd ../.. from home output: '" << output << "'";
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/\n");
+    END_TEST()
 
-        std::string pwd_output = shell->run_command("pwd", {});
-        std::cout << "pwd output: " << pwd_output;
-        // Should be at / or /home, not beyond root
-        ASSERT_STR_CONTAINS(pwd_output, "/");
+    TEST("cd ../../ from home climbs to root")
+        shell->run_command("cd", {});
+        ASSERT_EQ(shell->get_current_dir(), std::string("/home/") + globals::PLAYER_NAME);
+        std::string output = shell->run_command("cd", {"../../"});
+        std::cout << "cd ../../ from home output: '" << output << "'";
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/\n");
+    END_TEST()
+
+    TEST("cd .. from home stops at /home")
+        shell->run_command("cd", {});
+        std::string output = shell->run_command("cd", {".."});
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/home\n");
+    END_TEST()
+
+    TEST("cd relative directory without ..")
+        shell->run_command("cd", {"/"});
+        std::string output = shell->run_command("cd", {"tmp"});
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/tmp\n");
+    END_TEST()
+
+    TEST("cd missing directory keeps the current directory")
+        shell->run_command("cd", {"/tmp"});
+        std::string output = shell->run_command("cd", {"/no/such/dir"});
+        ASSERT_STR_CONTAINS(output, "No such directory");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/tmp\n");
+
+        output = shell->run_command("cd", {"missing"});
+        ASSERT_STR_CONTAINS(output, "No such directory");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/tmp\n");
+
+        output = shell->run_command("cd", {"../missing"});
+        ASSERT_STR_CONTAINS(output, "No such directory");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/tmp\n");
+
+        output = shell->run_command("cd", {"/tmp/does-not-exist/.."});
+        ASSERT_STR_CONTAINS(output, "No such directory");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/tmp\n");
     END_TEST()
 
     TEST("ls with absolute path ignores cwd")
@@ -416,13 +455,20 @@ int main() {
         ASSERT_STR_CONTAINS(output, "No such directory");
     END_TEST()
 
-    TEST("cd ///// multiple slashes normalizes to root")
+    TEST("cd // normalizes to root")
+        shell->run_command("cd", {"/tmp"});
+        std::string output = shell->run_command("cd", {"//"});
+        std::cout << "cd // output: '" << output << "'";
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/\n");
+    END_TEST()
+
+    TEST("cd ///// normalizes to root")
+        shell->run_command("cd", {"/home"});
         std::string output = shell->run_command("cd", {"/////"});
         std::cout << "cd ///// output: '" << output << "'";
-
-        std::string pwd_output = shell->run_command("pwd", {});
-        std::cout << "pwd output: " << pwd_output;
-        ASSERT_STR_CONTAINS(pwd_output, "/");
+        ASSERT_EQ(output, "");
+        ASSERT_EQ(shell->run_command("pwd", {}), "/\n");
     END_TEST()
 
     // Print summary
