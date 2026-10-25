@@ -14,7 +14,7 @@ Built with C++20, yaml-cpp, fmt, and readline.
 git clone https://github.com/smitehq/smite.git
 cd smite
 make
-./smite --version    # smite.sh 0.2.0
+./smite --version    # smite.sh 0.2.1
 ./smite
 ```
 

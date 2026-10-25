@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- `cd` now normalizes repeated slashes (`cd //` → `/`) and resolves multi-`..` paths (`cd ../../` from home → `/`).
+
 ## 0.2.0
 
 First-run experience for a new player, through the crashloop quest.

@@ -14,7 +14,7 @@ endif
 CXX := clang++
 
 # Version
-VERSION := 0.2.0
+VERSION := 0.2.1
 # Pieces of VERSION for the Windows file-version resource (X.Y.Z).
 VER_MAJOR := $(word 1,$(subst ., ,$(VERSION)))
 VER_MINOR := $(word 2,$(subst ., ,$(VERSION)))
