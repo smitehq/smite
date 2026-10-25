@@ -36,3 +36,6 @@ hints:
   - "Use 'kubectl logs <pod-name>' to view a pod's output."
   - "Try 'kubectl logs backend' to see what the backend pod is saying."
   - "Logs are your best friend when debugging issues."
+
+unlock_quests:
+  - k8s_crashloop

@@ -33,10 +33,18 @@ std::vector<QuestBrowser::ModuleInfo> QuestBrowser::gather_module_info() {
         info.name = mod->name();
         info.total_quests = quests.size();
 
-        // Group quests by difficulty (store by value, not pointer!)
+        // Group playable quests by difficulty (store by value, not pointer!)
         for (const auto& q : quests) {
+            if (!q.available) continue;
             info.quests_by_difficulty[q.difficulty].push_back(q);
         }
+
+        info.total_quests = 0;
+        for (const auto& [diff, grouped] : info.quests_by_difficulty) {
+            (void)diff;
+            info.total_quests += static_cast<int>(grouped.size());
+        }
+        if (info.total_quests == 0) continue;
 
         modules.push_back(info);
     }

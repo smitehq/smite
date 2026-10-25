@@ -1,5 +1,6 @@
 id: k8s_ingress_routing
 title: "The Broken Gateway"
+available: false
 description: "Fix a misconfigured Ingress that's routing all traffic to the wrong service."
 difficulty: advanced
 

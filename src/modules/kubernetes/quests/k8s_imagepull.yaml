@@ -43,7 +43,7 @@ hints:
   - "Check why the pod can't pull the image with 'kubectl describe pod api'"
   - "Look for 'imagePullBackOff' or 'ErrImagePull' in the events"
   - "You need to create a docker-registry secret"
-  - "Use 'kubectl create secret docker-registry' with registry credentials"
+  - "Use 'kubectl create secret generic registry-secret --from-literal username=user --from-literal password=pass' to add registry credentials"
   - "The secret name should be 'registry-secret'"
 
 unlock_quests:

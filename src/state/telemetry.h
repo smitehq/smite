@@ -76,5 +76,7 @@ private:
     std::map<std::string, QuestTelemetry> active_telemetry;
 
     // Settings
-    bool telemetry_enabled = true;  // Default to enabled, user can opt-out
+    // Product default is off (SettingsManager). This in-memory tracker stays on
+    // so direct unit tests record events unless they opt out.
+    bool telemetry_enabled = true;
 };

@@ -2,122 +2,152 @@
 
 ![Smite Logo](https://avatars.githubusercontent.com/u/240213050?s=88&v=4)
 
-*smite.sh* is a CLI-based troubleshooting simulator for DevOps apprentices. Dive into interactive scenarios mimicking real-world Kubernetes (K8s), AWS EKS, and Linux environments. Learn by breaking and fixing-quests guide you through outages, scaling issues, and config mishaps, all in a safe, emulated REPL.
+*smite.sh* is a CLI troubleshooting simulator for DevOps apprentices. You get a shell and a small Kubernetes cluster, then quests that ask you to notice what is broken and fix it. Nothing here talks to a real cluster.
 
-Built with C++20, *yaml-cpp* for state, *fmt* for styled output, and a modular router for plug-and-play extensions.
+Built with C++20, yaml-cpp, fmt, and readline.
 
 ---
 
-## Features
+## 60-second quickstart
 
--   **Interactive REPL**: Type shell commands, K8s `kubectl`, or AWS CLI-output feels authentic.
--   **Cluster-Aware K8s Simulator**: Emulates nodes, pods, and events; supports `kubectl get pods -o wide`, `describe`, and `logs`.
--   **Quests & Progression**: Scenarios like _CrashLoopBackOff_ or misconfigurations with progression tracking.
--   **Chaining Support**: `cd /etc && chmod rw-r--r-- config`-executes sequentially.
--   **Static Linking**: Single binary (`smite.exe`), no DLL dependencies.
--   **YAML-Driven State**: Edit `state.yaml` to define clusters, nodes, pods, and events.
-    
----
-
-## Installation
-
-1.  **Prerequisites**
-    
-    -   MSYS2 MinGW-w64 (Windows) or Clang toolchain (Linux/macOS)
-    -   Clang++ 20+
-        ```bash
-        pacman -S mingw-w64-x86_64-{clang,yaml-cpp,fmt,ncurses,readline}
-        ```
-        
-2.  **Clone & Build**
-
-    ```bash
-    git clone git@github.com:smitehq/smite.git
-    cd smite
-    make # or make clean && make
-    ./smite.exe # Windows
-    ./smite # Linux/macOS
-    ```
-    
----
-
-## Usage
-
-Run `./smite.exe` - the banner welcomes you, loads modules, and drops you into the `$` REPL.
-
-### REPL Commands
-
-#### Engine
-
-```
-help → show available modules and commands
-modules → list loaded modules
-quests → list available quests
-quests k8s 0 → activate quest 0 for Kubernetes
-quit → exit
+```bash
+git clone https://github.com/smitehq/smite.git
+cd smite
+make
+./smite --version    # smite.sh 0.2.0
+./smite
 ```
 
-#### Linux Module
+A new profile starts in **First Steps in Kubernetes**. Run:
 
-```
-ls, cd, cat, chmod, touch, nano
+```text
+kubectl version
 ```
 
-#### Kubernetes Module
+Smite completes the quest and prints the next one:
 
+```text
+Next: Deciphering the Logs (quests kubernetes k8s_reading_logs)
 ```
+
+Continue the guided path:
+
+```text
+quests kubernetes k8s_reading_logs
+kubectl logs backend
+
+quests kubernetes k8s_crashloop
 kubectl get pods
-kubectl get pods -o wide
-kubectl describe pod <name>
-kubectl get events
-kubectl get nodes
-kubectl describe node <name>
-kubectl logs <pod>
+kubectl describe pod backend
+kubectl logs backend
+kubectl get secrets
+kubectl create secret generic db-secret --from-literal username=admin --from-literal password=supersecret
 ```
 
-#### AWS Module
+The backend pod leaves CrashLoopBackOff. Type `quests` to browse further scenarios, `hint` if you are stuck, and `quit` to leave.
 
+After that first completion, smite asks whether to keep a local post-mortem (commands, time, hints). It stays off unless you say yes. Change it later with `settings telemetry enable` or `settings telemetry disable`. Nothing is sent off the machine.
+
+---
+
+## Install
+
+Clang++ with C++20, plus yaml-cpp, fmt, readline, and ncurses.
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install clang libyaml-cpp-dev libfmt-dev libreadline-dev libncurses-dev
+
+# macOS
+brew install yaml-cpp fmt readline ncurses
+
+# MSYS2
+pacman -S mingw-w64-x86_64-clang mingw-w64-x86_64-yaml-cpp mingw-w64-x86_64-fmt mingw-w64-x86_64-ncurses mingw-w64-x86_64-readline
 ```
-aws eks list-clusters
-aws eks describe-nodegroup <cluster> <nodegroup>
-aws eks update-nodegroup-config <cluster> <nodegroup> <count>
+
+```bash
+make
+./smite          # Linux/macOS
+./smite.exe      # Windows
+```
+
+Quest and cluster YAML are loaded from `src/modules` next to the binary (the `make dist` layout includes that tree). If you move the binary, set `SMITE_DATA` to the `modules` directory.
+
+Player state is not stored beside the binary. Settings, readline history, and quest progress go in `~/.smite`:
+
+```text
+~/.smite/settings.yaml
+~/.smite/quest_state.yaml
+~/.smite/.history
 ```
 
 ---
 
-### Example Session
+## REPL
 
-```console
-⚡  Welcome, Apprentice. Your journey begins.
+Prompt: `zaphod@lappy486:~$`
 
-zaphod@lappy486:~$ kubectl get pods -o wide
-NAME       READY  STATUS            RESTARTS  NODE     IP          IMAGE
-backend    0/1    CrashLoopBackOff  5         node-1   10.244.0.5  my-backend-image:v1
-frontend   1/1    Running           0         node-2   10.244.0.6  nginx:latest
+| Command | What it does |
+| --- | --- |
+| `help` | List command prefixes |
+| `modules` | List loaded modules |
+| `quests` | Open the quest browser |
+| `quests kubernetes` | List unlocked Kubernetes quests |
+| `quests kubernetes <id>` | Start that quest |
+| `hint` | Next hint for the active quest |
+| `settings` | Show telemetry |
+| `settings telemetry enable` / `disable` | Turn local post-mortems on or off |
+| `quit` | Exit |
 
-zaphod@lappy486:~$ kubectl get events wide
-LAST SEEN            TYPE     REASON    OBJECT    MESSAGE
-2025-10-24T14:00:01  Warning  Failed    backend   Failed to pull secret 'db-secret'
-2025-10-24T14:01:01  Normal   Pulling   backend   Pulling image "my-backend-image:v1"
-2025-10-24T14:01:30  Warning  BackOff   backend   Back-off restarting failed container
+Shell commands: `ls`, `cd`, `pwd`, `cat`, `echo`, `touch`, `chmod`, `nano`.
 
-zaphod@lappy486:~$ kubectl describe pod backend
-Name:         backend
-Node:         node-1
-Status:       CrashLoopBackOff
-Restarts:     5
-Image:        my-backend-image:v1
-Last State:
-  Reason:     Error
-  Exit Code:  1
-  Started:    2025-10-24T14:00:00
-  Finished:   2025-10-24T14:00:01
+`&&` runs a second command when the first one did not fail.
 
-Events:
-  Warning  Failed  Failed to pull secret 'db-secret'
-  Normal   Pulling Pulling image "my-backend-image:v1"
-  Warning  BackOff Back-off restarting failed container
+### kubectl
+
+These commands are implemented. Short names work the way kubectl players type them.
+
+```text
+kubectl version
+kubectl get pods | po | pod
+kubectl get nodes | no
+kubectl get deployments | deployment | deploy
+kubectl get services | svc
+kubectl get configmaps | cm
+kubectl get secrets
+kubectl get events
+kubectl describe pod | po <name>
+kubectl describe node | no <name>
+kubectl describe deployment | deploy <name>
+kubectl logs <pod>
+kubectl delete pod | po <name>
+kubectl top pods
+kubectl top nodes
+kubectl create secret generic <name> --from-literal <key>=<value>
+kubectl create configmap <name> --from-literal=<key>=<value>
+kubectl edit deployment | deploy <name>
+kubectl edit service <name>
+kubectl scale deployment | deploy <name> --replicas=<n>
+kubectl rollout <status|history|undo> deployment <name>
+kubectl cordon <node>
+kubectl uncordon <node>
 ```
+
+Anything else that starts with `kubectl` is reported as not implemented. It is not a shell "command not found" error: smite knows you meant kubectl and does not emulate that subcommand yet.
+
+---
+
+## Quests
+
+Guided path for a new player:
+
+1. `k8s_first_steps` — run `kubectl version`
+2. `k8s_reading_logs` — run `kubectl logs backend`
+3. `k8s_crashloop` — create the missing `db-secret` (see the quickstart)
+
+Other playable scenarios cover image pull failures, probes, scaling, rollouts, services, configmaps, and node pressure. A quest file whose hints depend on commands smite does not implement yet (ingress, network policy, drain, quotas, statefulsets, and similar) is hidden from `quests` until that command exists.
+
+Add a scenario as `src/modules/kubernetes/quests/<id>.yaml` plus a matching file under `state/`. Set `available: false` when a hint tells the player to run a command the simulator cannot perform.
 
 ---
 
@@ -125,48 +155,29 @@ Events:
 
 | Module | Description |
 | --- | --- |
-| Linux | File and permission management simulator. |
-| Kubernetes | Cluster-aware emulation of nodes, pods, and events. |
-| AWS | Simulates EKS clusters and nodegroup scaling. |
-
-Each module registers its own command namespace (`kubectl`, `aws`, etc.) and state file. Add new ones via `src/modules/<name>/`.
+| Shell | Everyday commands (`ls`, `cd`, `cat`, `nano`, …) against an in-memory filesystem. |
+| Kubernetes | Nodes, pods, deployments, services, and the quest cluster state. |
 
 ---
 
-## Quests
+## Build notes
 
-Activate via `quests <module> <id>`:
+```bash
+make            # debug binary
+make tests      # unit tests
+make clean && make
+```
 
--   **Kubernetes** – “The Crashing Pod”: Fix a backend in CrashLoopBackOff.
--   **AWS** – “Scale the Node Group”: Increase node count to resolve load issues.
--   **Linux** – “Fix Config Permissions”: Correct `/etc/config` file permissions.
-    
----
-
-## Building
-
--   Uses static linking.
--   Supports MSYS2, Linux, and macOS (adjust paths).
--   Debugging:
-    ```
-    make clean && make DEBUG=1
-    ```
+`make release` and `make dist` produce a stripped binary and a tarball. Windows builds are statically linked; Linux and macOS link the libraries listed above.
 
 ---
 
 ## Contributing
 
--   PRs welcome - focus on gameplay feel and extensibility.
--   Code style: modern C++20, RAII, smart pointers.
--   Scenarios: add YAMLs under `/modules/<name>/`
-    - Module state in `state.yaml` and quests in `quests.yaml`
-    
+PRs are welcome, especially ones that make a quest completable with the commands the hints name. C++20, RAII, and the existing module interface.
+
 ---
 
 ## License
 
-MIT - use, modify, and smite responsibly.
-
----
-
-*Built with ❤️*
+MIT. Use, modify, and smite responsibly.

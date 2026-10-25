@@ -25,8 +25,8 @@ public:
     static std::filesystem::path get_settings_path();
 
 private:
-    bool telemetry_enabled_ = true;  // Default to enabled
-    bool has_preference_ = false;    // Has user set a preference?
+    bool telemetry_enabled_ = false;  // Off until the player opts in
+    bool has_preference_ = false;     // Has user set a preference?
 
     void ensure_settings_dir();
 };

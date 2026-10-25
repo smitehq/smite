@@ -1,5 +1,6 @@
 id: k8s_network_policy
 title: "The Network Lockdown"
+available: false
 description: "Implement NetworkPolicies to secure pod-to-pod communication."
 difficulty: expert
 

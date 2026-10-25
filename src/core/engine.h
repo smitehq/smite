@@ -27,6 +27,10 @@ public:
     // REPL
     void repl();
 
+    // Start k8s_first_steps when ~/.smite has no saved quest progress.
+    // Returns the activation banner, or empty when this is not a first launch.
+    std::string begin_first_quest_if_needed();
+
     // Command dispatch
     std::string dispatch_command(const std::string& cmd);
 
@@ -66,6 +70,11 @@ private:
     // Helpers
     std::string get_prompt();
     void prompt_telemetry_consent();
+    void flush_telemetry_prompt();
+    std::string activate_named_quest(const std::string& mod, const std::string& quest_id);
+
+    bool pending_telemetry_prompt_ = false;
+    bool first_quest_started_ = false;
 
     // Get shell module with caching
     std::shared_ptr<Shell> get_shell_module();

@@ -34,3 +34,6 @@ completion_message: |
 hints:
   - "Type 'kubectl version' to see the client and server versions."
   - "This command shows you're connected to the cluster."
+
+unlock_quests:
+  - k8s_reading_logs
