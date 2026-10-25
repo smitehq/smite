@@ -5,9 +5,21 @@ on:
     tags:
       # Matches 0.2.0 and v0.2.0. The job rejects tags that are not X.Y.Z.
       - "*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to publish
+        required: false
+        default: "0.2.0"
+        type: string
 
 permissions:
   contents: write
+
+# Tag pushes publish the pushed tag. A manual run publishes inputs.tag,
+# which defaults to 0.2.0 so the existing annotated tag can be built.
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.tag || '0.2.0') || github.ref_name }}
 
 jobs:
   linux-amd64:
@@ -18,6 +30,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Install build dependencies
         run: |
@@ -41,7 +55,7 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="${RELEASE_TAG}"
           version="${tag#v}"
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Tag '${tag}' is not a release version (expected 0.2.0 or v0.2.0)." >&2
@@ -139,6 +153,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Install MSYS2 MinGW64 toolchain
         uses: msys2/setup-msys2@v2
@@ -164,7 +180,7 @@ jobs:
         shell: msys2 {0}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="${RELEASE_TAG}"
           version="${tag#v}"
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Tag '${tag}' is not a release version (expected 0.2.0 or v0.2.0)." >&2
