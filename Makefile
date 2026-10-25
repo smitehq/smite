@@ -14,7 +14,7 @@ endif
 CXX := clang++
 
 # Version
-VERSION := 0.2.0
+VERSION := 0.2.1
 # Pieces of VERSION for the Windows file-version resource (X.Y.Z).
 VER_MAJOR := $(word 1,$(subst ., ,$(VERSION)))
 VER_MINOR := $(word 2,$(subst ., ,$(VERSION)))
@@ -118,7 +118,7 @@ endif
 
 # Windows resource compilation.
 # smite.rc carries the same strings as the 0.1.0-alpha executable. @VERSION@
-# and @VER_*@ are filled from VERSION so `make dist VERSION=0.2.0` matches the tag.
+# and @VER_*@ are filled from VERSION so `make dist VERSION=0.2.1` matches the tag.
 build/resources/smite_res.o: resources/smite.rc resources/smite.ico
 	@$(MKDIR) -p $(dir $@)
 	sed -e 's/@VERSION@/$(VERSION)/g' \
