@@ -48,18 +48,6 @@ const std::set<std::string> kProseWords = {
     "commands", "command", "client", "blade", "like", "itself"
 };
 
-const char* kHiddenQuests[] = {
-    "k8s_affinity_failure",
-    "k8s_ingress_routing",
-    "k8s_multi_cluster",
-    "k8s_network_policy",
-    "k8s_node_drain",
-    "k8s_persistent_storage",
-    "k8s_resource_quota",
-    "k8s_resource_request",
-    "k8s_statefulset_order",
-};
-
 std::string trim_copy(std::string text) {
     return Utils::trim(text);
 }
@@ -208,7 +196,7 @@ TEST("Guided path is first_steps, then reading_logs, then crashloop")
     ASSERT_TRUE(next_crash.find("k8s_crashloop") != std::string::npos);
 END_TEST()
 
-TEST("Unfinished quests are hidden, and playable hints only mention supported kubectl")
+TEST("Quest hints only mention kubectl commands the simulator implements")
     QuestManager quests("src/modules");
     quests.load_all_quests();
 
@@ -216,40 +204,25 @@ TEST("Unfinished quests are hidden, and playable hints only mention supported ku
     ASSERT_TRUE(kube->load_from_path("src/modules/kubernetes"));
     auto prefixes = kube->registered_prefixes();
 
-    std::set<std::string> hidden(std::begin(kHiddenQuests), std::end(kHiddenQuests));
     auto loaded = quests.get_quests_for_module("kubernetes");
 
     for (const auto& quest : loaded) {
-        bool is_hidden = hidden.count(quest.id) > 0;
-        if (quest.available == is_hidden) {
-            throw std::runtime_error(std::string("available flag mismatch for ") + quest.id);
+        if (!quest.available) {
+            throw std::runtime_error(quest.id + " is hidden; its hint commands should be implemented");
         }
-
-        bool saw_unsupported = false;
         for (const auto& hint : quest.hints) {
             for (const auto& cmd : extract_kubectl_commands(hint)) {
                 if (!kubectl_invocation_supported(prefixes, cmd)) {
-                    saw_unsupported = true;
-                    if (quest.available) {
-                        throw std::runtime_error(quest.id + " hint uses unsupported command: " + cmd);
-                    }
+                    throw std::runtime_error(quest.id + " hint uses unsupported command: " + cmd);
                 }
             }
-        }
-        if (is_hidden && !saw_unsupported) {
-            throw std::runtime_error(quest.id + " is hidden but every hint command is implemented; unhide it");
         }
     }
 
     quests.mark_quest_completed("kubernetes", "k8s_rolling_update");
-    ASSERT_TRUE(!quests.activate_quest("kubernetes", "k8s_node_drain"));
+    ASSERT_TRUE(quests.activate_quest("kubernetes", "k8s_node_drain"));
     std::string listing = quests.list_quests("kubernetes");
-    std::string grouped = quests.list_all_quests_grouped();
-    for (const char* id : kHiddenQuests) {
-        if (listing.find(id) != std::string::npos || grouped.find(id) != std::string::npos) {
-            throw std::runtime_error(std::string("Hidden quest is still listed: ") + id);
-        }
-    }
+    ASSERT_TRUE(listing.find("k8s_node_drain") != std::string::npos);
 END_TEST()
 
 TEST("Unsupported kubectl is an honest simulator error, and common aliases work")
@@ -258,11 +231,11 @@ TEST("Unsupported kubectl is an honest simulator error, and common aliases work"
     Router router;
     router.add_module(kube);
 
-    std::string missing = router.handle_command({"kubectl", "get", "ingress"});
+    std::string missing = router.handle_command({"kubectl", "get", "cronjobs"});
     ASSERT_TRUE(missing.find("command not found") == std::string::npos);
     ASSERT_TRUE(missing.find("-bash:") == std::string::npos);
     ASSERT_TRUE(missing.find("not implemented") != std::string::npos);
-    ASSERT_TRUE(missing.find("kubectl get ingress") != std::string::npos);
+    ASSERT_TRUE(missing.find("kubectl get cronjobs") != std::string::npos);
 
     std::string unknown = router.handle_command({"not-a-real-binary"});
     ASSERT_TRUE(unknown.find("command not found") != std::string::npos);

@@ -11,11 +11,14 @@ inline auto cmd_get_nodes(KubernetesModule* module) {
     return [module](const std::vector<std::string>& args) -> std::string  {
         std::ostringstream out;
 
-        out << std::left << std::setw(10) << "NAME" << std::setw(12) << "STATUS" << "ROLES\n";
+        out << std::left
+            << std::setw(18) << "NAME"
+            << std::setw(28) << "STATUS"
+            << "ROLES\n";
         for (const auto& n : module->get_nodes()) {
-            std::string status = "Ready"; // assume all nodes ready
-            std::string roles = "worker"; // default role
-            out << std::setw(10) << n.name << std::setw(12) << status << roles << "\n";
+            std::string status = n.cordoned ? "Ready,SchedulingDisabled" : "Ready";
+            std::string roles = "worker";
+            out << std::setw(18) << n.name << std::setw(28) << status << roles << "\n";
         }
         return out.str();
     };

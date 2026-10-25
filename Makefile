@@ -89,7 +89,7 @@ clean:
 	$(RM) -rf build dist $(TARGET)
 
 # Run all tests
-tests: test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run test-k8s-scale
+tests: test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run test-k8s-scale test-k8s-quest-commands
 
 # K8s Quest Test
 test-k8s-quest: build/tests/test_k8s_quest.o $(SRC_OBJS)
@@ -136,6 +136,11 @@ test-k8s-scale: build/tests/test_k8s_scale.o $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) build/tests/test_k8s_scale.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_scale$(EXE_SUFFIX) $(LDFLAGS)
 	./build/tests/test_k8s_scale$(EXE_SUFFIX)
 
+# Player-facing kubectl commands referenced by quests
+test-k8s-quest-commands: build/tests/test_k8s_quest_commands.o $(SRC_OBJS)
+	$(CXX) $(CXXFLAGS) build/tests/test_k8s_quest_commands.o $(filter-out build/src/smite.o,$(SRC_OBJS)) -o build/tests/test_k8s_quest_commands$(EXE_SUFFIX) $(LDFLAGS)
+	./build/tests/test_k8s_quest_commands$(EXE_SUFFIX)
+
 build/tests/%.o: tests/%.cpp
 	@$(MKDIR) -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -169,4 +174,4 @@ show-sources:
 	@echo "Source files:"
 	@echo $(SRC_SRCS) | tr ' ' '\n'
 
-.PHONY: clean test tests release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run test-k8s-scale
+.PHONY: clean test tests release dist show-platform show-sources test-k8s-quest test-shell test-quest-browser test-k8s-spec test-k8s-black-friday test-telemetry test-settings test-first-run test-k8s-scale test-k8s-quest-commands

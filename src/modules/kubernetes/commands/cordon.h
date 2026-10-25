@@ -6,7 +6,6 @@
 
 namespace k8s_commands {
 
-// Add a cordon status field to nodes (we'll need to update Node struct)
 inline auto cmd_cordon(KubernetesModule* mod) {
     return [mod](const std::vector<std::string>& args) -> std::string {
         if (args.empty()) {
@@ -18,8 +17,7 @@ inline auto cmd_cordon(KubernetesModule* mod) {
 
         for (auto& node : nodes) {
             if (node.name == node_name) {
-                // For now, just return success message
-                // In a real implementation, we'd add a 'cordoned' field to Node struct
+                node.cordoned = true;
                 return "node/" + node_name + " cordoned\n";
             }
         }
@@ -39,6 +37,7 @@ inline auto cmd_uncordon(KubernetesModule* mod) {
 
         for (auto& node : nodes) {
             if (node.name == node_name) {
+                node.cordoned = false;
                 return "node/" + node_name + " uncordoned\n";
             }
         }

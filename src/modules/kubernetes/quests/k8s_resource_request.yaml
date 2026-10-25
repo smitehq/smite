@@ -1,6 +1,5 @@
 id: k8s_resource_request
 title: "The Unschedulable Pod"
-available: false
 description: "Fix a pod stuck in Pending due to insufficient cluster resources."
 difficulty: advanced
 

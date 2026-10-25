@@ -1,6 +1,5 @@
 id: k8s_persistent_storage
 title: "Data in the Ether"
-available: false
 description: "Solve a persistent volume mounting issue."
 difficulty: advanced
 

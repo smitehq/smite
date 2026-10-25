@@ -1,6 +1,5 @@
 id: k8s_statefulset_order
 title: "The Broken Quorum"
-available: false
 description: "Fix a StatefulSet that lost quorum by scaling it back to 3 replicas."
 difficulty: advanced
 

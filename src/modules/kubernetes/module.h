@@ -69,6 +69,9 @@ struct Node {
     std::string ip;
     std::vector<Pod> pods;
     bool cordoned = false;  // Track if node is cordoned (unschedulable)
+    std::unordered_map<std::string, std::string> labels;
+    std::string cpu_capacity;     // empty means the simulator default (4)
+    std::string memory_capacity;  // empty means the simulator default (8Gi)
 };
 
 struct Secret {
@@ -153,6 +156,29 @@ struct NetworkPolicy {
     std::string age = "0s";
 };
 
+struct PersistentVolume {
+    std::string name;
+    std::string status = "Available";  // Available, Bound, Released
+    std::string capacity;              // e.g. "10Gi"
+    std::string access_modes = "ReadWriteOnce";
+    std::string storage_class;
+    std::string claim;                 // bound PVC name, if any
+    std::string age = "0s";
+};
+
+struct ResourceQuota {
+    std::string name;
+    std::string ns = "default";
+    std::string age = "0s";
+    std::unordered_map<std::string, std::string> hard;
+    std::unordered_map<std::string, std::string> used;
+};
+
+struct KubeContext {
+    std::string name;
+    std::string cluster;
+};
+
 struct Cluster {
     std::string name;
     std::vector<Node> nodes;
@@ -195,6 +221,11 @@ private:
     std::vector<Service> services;
     std::vector<Ingress> ingresses;
     std::vector<NetworkPolicy> network_policies;
+    std::vector<PersistentVolume> pvs;
+    std::vector<ResourceQuota> resource_quotas;
+    std::vector<KubeContext> contexts_;
+    std::string current_context_;
+    std::string cluster_name_;
     YAML::Node default_state_yaml;
     std::string active_quest_id;
     std::unordered_map<std::string, YAML::Node> quest_data;  // quest_id -> quest YAML
@@ -258,6 +289,26 @@ public:
     std::vector<Deployment>& get_deployments_mutable() { return deployments; }
     const std::vector<Service>& get_services() const { return services; }
     void add_service(const Service& svc) { services.push_back(svc); }
+    const std::vector<StatefulSet>& get_statefulsets() const { return statefulsets; }
+    std::vector<StatefulSet>& get_statefulsets_mutable() { return statefulsets; }
+    const std::vector<Ingress>& get_ingresses() const { return ingresses; }
+    std::vector<Ingress>& get_ingresses_mutable() { return ingresses; }
+    const std::vector<NetworkPolicy>& get_network_policies() const { return network_policies; }
+    void add_network_policy(const NetworkPolicy& policy) { network_policies.push_back(policy); }
+    const std::vector<PersistentVolume>& get_pvs() const { return pvs; }
+    std::vector<PersistentVolume>& get_pvs_mutable() { return pvs; }
+    const std::vector<ResourceQuota>& get_resource_quotas() const { return resource_quotas; }
+    const std::string& get_current_context() const { return current_context_; }
+    const std::vector<KubeContext>& get_contexts() const { return contexts_; }
+    bool use_context(const std::string& name) {
+        for (const auto& ctx : contexts_) {
+            if (ctx.name == name) {
+                current_context_ = name;
+                return true;
+            }
+        }
+        return false;
+    }
     std::string check_secret_trigger(const std::string& secret_name);
 
     // Helper methods (public for command headers)

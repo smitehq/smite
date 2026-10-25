@@ -76,3 +76,13 @@ cluster:
         - "443:8443/TCP"
       selector:
         app: payments
+
+kubeconfig:
+  current_context: staging
+  contexts:
+    - name: staging
+      cluster: staging
+    - name: prod-us-east
+      cluster: prod-us-east
+    - name: prod-eu-west
+      cluster: prod-eu-west

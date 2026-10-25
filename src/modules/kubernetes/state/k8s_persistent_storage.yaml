@@ -26,5 +26,12 @@ cluster:
       storage_request: "10Gi"
       storage_class: "standard"
       age: "5m"
+  pvs:
+    - name: small-fast-pv
+      status: Available
+      capacity: "1Gi"
+      access_modes: ReadWriteOnce
+      storage_class: fast-ssd
+      age: "1h"
   deployments: []
   services: []

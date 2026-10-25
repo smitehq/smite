@@ -32,6 +32,20 @@
 #include "commands/create_configmap.h"
 #include "commands/edit_service.h"
 #include "commands/describe_deployment.h"
+#include "commands/get_pvc.h"
+#include "commands/get_pv.h"
+#include "commands/get_resourcequota.h"
+#include "commands/get_statefulsets.h"
+#include "commands/get_networkpolicies.h"
+#include "commands/get_ingress.h"
+#include "commands/describe_ingress.h"
+#include "commands/edit_ingress.h"
+#include "commands/delete_deployment.h"
+#include "commands/scale_statefulset.h"
+#include "commands/config.h"
+#include "commands/create_from_file.h"
+#include "commands/label.h"
+#include "commands/drain.h"
 
 namespace fs = std::filesystem;
 
@@ -73,8 +87,15 @@ void KubernetesModule::load_cluster_state(const YAML::Node& node) {
     services.clear();
     ingresses.clear();
     network_policies.clear();
+    pvs.clear();
+    resource_quotas.clear();
+    contexts_.clear();
+    current_context_.clear();
+    cluster_name_.clear();
 
     if (!node["cluster"]) return;
+
+    if (node["cluster"]["name"]) cluster_name_ = node["cluster"]["name"].as<std::string>();
 
     // Load nodes and pods
     if (node["cluster"]["nodes"]) {
@@ -83,6 +104,13 @@ void KubernetesModule::load_cluster_state(const YAML::Node& node) {
             if (n["name"]) node_struct.name = n["name"].as<std::string>();
             if (n["ip"]) node_struct.ip = n["ip"].as<std::string>();
             if (n["cordoned"]) node_struct.cordoned = n["cordoned"].as<bool>();
+            if (n["cpu"]) node_struct.cpu_capacity = n["cpu"].as<std::string>();
+            if (n["memory"]) node_struct.memory_capacity = n["memory"].as<std::string>();
+            if (n["labels"]) {
+                for (auto lbl : n["labels"]) {
+                    node_struct.labels[lbl.first.as<std::string>()] = lbl.second.as<std::string>();
+                }
+            }
 
             if (n["pods"]) {
                 for (auto p : n["pods"]) {
@@ -271,6 +299,62 @@ void KubernetesModule::load_cluster_state(const YAML::Node& node) {
             network_policies.push_back(policy);
         }
     }
+
+    if (node["cluster"]["pvs"]) {
+        for (auto pv : node["cluster"]["pvs"]) {
+            PersistentVolume volume;
+            if (pv["name"]) volume.name = pv["name"].as<std::string>();
+            if (pv["status"]) volume.status = pv["status"].as<std::string>();
+            if (pv["capacity"]) volume.capacity = pv["capacity"].as<std::string>();
+            if (pv["access_modes"]) volume.access_modes = pv["access_modes"].as<std::string>();
+            if (pv["storage_class"]) volume.storage_class = pv["storage_class"].as<std::string>();
+            if (pv["claim"]) volume.claim = pv["claim"].as<std::string>();
+            if (pv["age"]) volume.age = pv["age"].as<std::string>();
+            pvs.push_back(volume);
+        }
+    }
+
+    if (node["cluster"]["resourcequotas"]) {
+        for (auto rq : node["cluster"]["resourcequotas"]) {
+            ResourceQuota quota;
+            if (rq["name"]) quota.name = rq["name"].as<std::string>();
+            if (rq["age"]) quota.age = rq["age"].as<std::string>();
+            if (rq["hard"]) {
+                for (auto kv : rq["hard"]) {
+                    quota.hard[kv.first.as<std::string>()] = kv.second.as<std::string>();
+                }
+            }
+            if (rq["used"]) {
+                for (auto kv : rq["used"]) {
+                    quota.used[kv.first.as<std::string>()] = kv.second.as<std::string>();
+                }
+            }
+            resource_quotas.push_back(quota);
+        }
+    }
+
+    if (node["kubeconfig"]) {
+        if (node["kubeconfig"]["current_context"]) {
+            current_context_ = node["kubeconfig"]["current_context"].as<std::string>();
+        }
+        if (node["kubeconfig"]["contexts"]) {
+            for (auto c : node["kubeconfig"]["contexts"]) {
+                KubeContext ctx;
+                if (c["name"]) ctx.name = c["name"].as<std::string>();
+                if (c["cluster"]) ctx.cluster = c["cluster"].as<std::string>();
+                else ctx.cluster = ctx.name;
+                if (!ctx.name.empty()) contexts_.push_back(ctx);
+            }
+        }
+    }
+
+    if (contexts_.empty()) {
+        KubeContext ctx;
+        ctx.name = cluster_name_.empty() ? "default" : cluster_name_;
+        ctx.cluster = ctx.name;
+        contexts_.push_back(ctx);
+    }
+    if (current_context_.empty()) current_context_ = contexts_.front().name;
 }
 
 // ----------------------
@@ -385,6 +469,31 @@ void KubernetesModule::register_builtin_commands() {
     register_command("kubectl uncordon", cmd_uncordon);
     register_command("kubectl create configmap", cmd_create_configmap);
     register_command("kubectl edit service", cmd_edit_service);
+    register_command("kubectl get pvc", cmd_get_pvc);
+    register_command("kubectl get pv", cmd_get_pv);
+    register_command("kubectl get resourcequota", cmd_get_resourcequota);
+    register_command("kubectl get resourcequotas", cmd_get_resourcequota);  // alias
+    register_command("kubectl get statefulsets", cmd_get_statefulsets);
+    register_command("kubectl get statefulset", cmd_get_statefulsets);  // alias
+    register_command("kubectl get sts", cmd_get_statefulsets);  // alias
+    register_command("kubectl get networkpolicies", cmd_get_networkpolicies);
+    register_command("kubectl get networkpolicy", cmd_get_networkpolicies);  // alias
+    register_command("kubectl get netpol", cmd_get_networkpolicies);  // alias
+    register_command("kubectl get ingress", cmd_get_ingress);
+    register_command("kubectl get ing", cmd_get_ingress);  // alias
+    register_command("kubectl describe ingress", cmd_describe_ingress);
+    register_command("kubectl describe nodes", cmd_describe_node);  // plural, all nodes when unnamed
+    register_command("kubectl edit ingress", cmd_edit_ingress);
+    register_command("kubectl delete deployment", cmd_delete_deployment);
+    register_command("kubectl delete deploy", cmd_delete_deployment);  // alias
+    register_command("kubectl scale statefulset", cmd_scale_statefulset);
+    register_command("kubectl scale sts", cmd_scale_statefulset);  // alias
+    register_command("kubectl config current-context", cmd_config_current_context);
+    register_command("kubectl config get-contexts", cmd_config_get_contexts);
+    register_command("kubectl config use-context", cmd_config_use_context);
+    register_command("kubectl create -f", cmd_create_from_file);
+    register_command("kubectl label node", cmd_label_node);
+    register_command("kubectl drain", cmd_drain);
 
     // Catch kubectl invocations that do not match a longer registered prefix.
     // This must stay a bare "kubectl" prefix so longest-prefix matching still

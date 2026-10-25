@@ -11,9 +11,28 @@ inline auto cmd_get_deployments(KubernetesModule* mod) {
     return [mod](const std::vector<std::string>& args) -> std::string {
         std::ostringstream out;
 
+        std::string wanted;
+        for (const auto& arg : args) {
+            if (!arg.empty() && arg[0] != '-') {
+                wanted = arg;
+                break;
+            }
+        }
+
         const auto& deployments = mod->get_deployments();
 
-        if (deployments.empty()) {
+        if (!wanted.empty()) {
+            bool found = false;
+            for (const auto& dep : deployments) {
+                if (dep.name == wanted) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return "Error from server (NotFound): deployments.apps \"" + wanted + "\" not found\n";
+            }
+        } else if (deployments.empty()) {
             out << "No resources found in default namespace.\n";
             return out.str();
         }
@@ -28,6 +47,7 @@ inline auto cmd_get_deployments(KubernetesModule* mod) {
             << "\n";
 
         for (const auto& dep : deployments) {
+            if (!wanted.empty() && dep.name != wanted) continue;
             std::string ready = std::to_string(dep.ready_replicas) + "/" + std::to_string(dep.replicas);
             out << std::left
                 << std::setw(30) << dep.name
