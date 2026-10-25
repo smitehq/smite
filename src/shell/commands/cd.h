@@ -16,27 +16,12 @@ inline auto cmd_cd(Shell* shell) {
     }
 
     std::string target = args[0];
-
-    // Handle going up one directory
-    if (target == "..") {
-        std::string current = shell->get_current_dir();
-        if (current == "/") return ""; // already root
-        size_t pos = current.find_last_of('/');
-        if (pos == 0)
-            shell->set_current_dir("/");
-        else if (pos != std::string::npos)
-            shell->set_current_dir(current.substr(0, pos));
-        return "";
-    }
-
-    // Normal path resolution
-    std::string resolved = shell->resolve_path(target);
-    Dir* dir = shell->get_dir(resolved);
-    if (!dir) {
+    std::optional<std::string> resolved = shell->normalize_path(target);
+    if (!resolved) {
         return "cd: No such directory: " + target + "\n";
     }
 
-    shell->set_current_dir(resolved);
+    shell->set_current_dir(*resolved);
     return "";
     };
 }
