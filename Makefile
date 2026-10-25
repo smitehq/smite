@@ -6,6 +6,10 @@ CXX := clang++
 
 # Version
 VERSION := 0.2.0
+# Pieces of VERSION for the Windows file-version resource (X.Y.Z).
+VER_MAJOR := $(word 1,$(subst ., ,$(VERSION)))
+VER_MINOR := $(word 2,$(subst ., ,$(VERSION)))
+VER_PATCH := $(word 3,$(subst ., ,$(VERSION)))
 
 # Platform-specific settings
 ifeq ($(findstring Linux,$(UNAME_S)),Linux)
@@ -75,10 +79,18 @@ $(TARGET): $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 endif
 
-# Windows resource compilation
+# Windows resource compilation.
+# smite.rc carries the same strings as the 0.1.0-alpha executable. @VERSION@
+# and @VER_*@ are filled from VERSION so `make dist VERSION=0.2.0` matches the tag.
 build/resources/smite_res.o: resources/smite.rc resources/smite.ico
 	@$(MKDIR) -p $(dir $@)
-	cd resources && $(WINDRES) smite.rc -O coff -o ../build/resources/smite_res.o
+	sed -e 's/@VERSION@/$(VERSION)/g' \
+	    -e 's/@VER_MAJOR@/$(VER_MAJOR)/g' \
+	    -e 's/@VER_MINOR@/$(VER_MINOR)/g' \
+	    -e 's/@VER_PATCH@/$(VER_PATCH)/g' \
+	    resources/smite.rc > build/resources/smite.rc
+	cp resources/smite.ico build/resources/smite.ico
+	cd build/resources && $(WINDRES) smite.rc -O coff -o smite_res.o
 
 build/src/%.o: src/%.cpp
 	@$(MKDIR) -p $(dir $@)
