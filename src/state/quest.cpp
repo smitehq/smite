@@ -219,28 +219,12 @@ int QuestManager::get_hints_shown(const std::string& mod_name) const {
 std::string QuestManager::quest_accomplished(const std::string& completion_message) {
     std::ostringstream celebration;
 
-    // // Confetti explosion!
-    // celebration << "        *  .  *    .   *   .    *    .   *    .  *\n";
-    // celebration << "     .    *   .  *   .   *   .   *   .  *   .    *\n";
-    // celebration << "   *   .    *    .  *   .  *    .  *   .   *   .   *\n";
-    // celebration << "     .  *   .  *    .  *   .  *   .   *  .   *   .\n";
-    // celebration << "\n";
-
-    // Victory banner
     celebration << "    \\O/   \\O/   \\O/   QUEST COMPLETE!   \\O/   \\O/   \\O/\n";
     celebration << "\n";
 
-    // Add the custom completion message from YAML
     if (!completion_message.empty()) {
         celebration << completion_message << "\n";
     }
-
-    // // Final confetti burst
-    // celebration << "\n";
-    // celebration << "  *  '  *  '  *  '  *  '  *  '  *  '  *  '  *  '  *  '\n";
-    // celebration << "   '  *  '  *  '  *  '  *  '  *  '  *  '  *  '  *  '\n";
-    // celebration << "  *  '  *  '  *  '  *  '  *  '  *  '  *  '  *  '  *  '\n";
-    // celebration << "\n";
 
     return celebration.str();
 }

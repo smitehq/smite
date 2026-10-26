@@ -1,6 +1,7 @@
 #include "globals.h"
 #include "utils.h"
 #include "engine.h"
+#include "confetti.h"
 #include "paths.h"
 #include "shell/shell.h"
 #include <filesystem>
@@ -297,6 +298,7 @@ std::string Engine::dispatch_command(const std::string& cmd) {
 
             quests_.mark_quest_completed(mod_name, quest_id);
             mod->clear_quest_completion_flag();
+            quest_completed_this_command_ = true;
             result += "\n";
             result += quests_.format_next_step(mod_name, quest_id);
             if (!settings_.has_telemetry_preference()) {
@@ -375,6 +377,17 @@ void Engine::flush_telemetry_prompt() {
     }
 }
 
+bool Engine::consume_quest_celebration() {
+    bool pending = quest_completed_this_command_;
+    quest_completed_this_command_ = false;
+    return pending;
+}
+
+void Engine::play_quest_celebration() {
+    if (!consume_quest_celebration()) return;
+    smite::play_quest_confetti(std::cout);
+}
+
 // --------------------------
 // REPL
 // --------------------------
@@ -438,6 +451,7 @@ void Engine::repl() {
                     std::cout << " (Chain stopped on error)\n";
                 }
                 std::cout << std::endl;
+                play_quest_celebration();
                 flush_telemetry_prompt();
                 continue;
             }
@@ -449,6 +463,7 @@ void Engine::repl() {
             std::cout << output;
         }
         std::cout << std::endl;
+        play_quest_celebration();
         flush_telemetry_prompt();
     }
 
